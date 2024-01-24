@@ -321,7 +321,7 @@ def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, log, er
     if plot_type == 'bar':
         fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 18))
     elif plot_type == 'annual':
-        fig, axes = plt.subplots(len(volcanos), 2, gridspec_kw={'width_ratios': [2, 1]}, figsize=(10, len(rainfall['Date'].unique())//300))
+        fig, axes = plt.subplots(len(volcanos), 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, len(rainfall['Date'].unique())//300))
 
     for pick in volcanos:
         legend_handles = [mpatches.Patch(color=colors[i], label='Quantile ' + str(i+1)) for i in range(color_count)]
@@ -367,32 +367,30 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
             x = date_dec % 1
             y = date_dec // 1
             axes[count, 0].scatter(x[i*bin_size:(i+1)*bin_size], y[i*bin_size:(i+1)*bin_size], color=colors[i], marker='s', s =30)
-    custom_reds = ListedColormap(['#8B0000', '#A52A2A', '#CD5C5C', '#DC143C', '#FF0000'])
-    custom_blues = ListedColormap(['#00008B', '#0000CD', '#4169E1', '#6495ED', '#87CEEB'])
 
     if elninos != None:
         for j in elninos:
             if j == 'weak nino':
-                line_color = custom_reds(3)
-                legend_handles += [mpatches.Patch(color=line_color, label='weak nino')]
+                line_color = 'gray'
+                # legend_handles += [mpatches.Patch(color=line_color, label='weak nino')]
             elif j == 'moderate nino':
-                line_color = custom_reds(2)
-                legend_handles += [mpatches.Patch(color=line_color, label='moderate nino')]
+                line_color = 'gray'
+                # legend_handles += [mpatches.Patch(color=line_color, label='moderate nino')]
             elif j == 'strong nino':
-                line_color = custom_reds(1)
-                legend_handles += [mpatches.Patch(color=line_color, label='strong nino')]
+                line_color = 'gray'
+                legend_handles += [mpatches.Patch(color=line_color, label='strong Niño')]
             elif j == 'very strong nino':
-                line_color = custom_reds(0)
-                legend_handles += [mpatches.Patch(color=line_color, label='very strong nino')]
+                line_color = 'black'
+                legend_handles += [mpatches.Patch(color=line_color, label='very strong Niño')]
             elif j == 'weak nina':
-                line_color = custom_blues(2)
-                legend_handles += [mpatches.Patch(color=line_color, label='weak nina')]
+                line_color = 'gray'
+                # legend_handles += [mpatches.Patch(color=line_color, label='weak nina')]
             elif j == 'moderate nina':
-                line_color = custom_blues(1)
-                legend_handles += [mpatches.Patch(color=line_color, label='moderate nina')]
+                line_color = 'gray'
+                # legend_handles += [mpatches.Patch(color=line_color, label='moderate nina')]
             elif j == 'strong nina':
-                line_color = custom_blues(0)
-                legend_handles += [mpatches.Patch(color=line_color, label='strong nina')]
+                line_color = 'gray'
+                # legend_handles += [mpatches.Patch(color=line_color, label='strong nina')]
             for i in range(len(elninos[j])):
                 x1 = elninos[j][i][0] % 1
                 y1 = elninos[j][i][0] // 1
@@ -415,9 +413,8 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
     years = [i for i in range(start, end+1)]
     for i in years:
         totals.append(volc_rain['Precipitation'][volc_rain['Decimal'] // 1 == i].sum())
-    axes[count, 1].set_title('Precipitation totals at ' + volcanos[pick][2]) 
+    axes[count, 1].set_title('Total (mm)') 
     axes[count, 1].barh(years, totals, height=.5, color='purple')
-    axes[count, 1].set_xlabel("Total annual rainfall (mm)") 
     axes[count, 1].set_yticks([start + (2*k) for k in range(((end + 1 - start) // 2))], [str(start + (2*k)) for k in range(((end + 1 - start) // 2))])
 
     return
@@ -426,6 +423,8 @@ def bar_subplotter(log, dates, color_count, count, colors, axes, date_dec, erupt
     legend_handles += [mpatches.Patch(color='gray', label='Cumulative precipitation')]
     if log == True:
         date_rain = np.log(date_rain + 1.25)
+
+    y_max = np.max(date_rain)
 
     for l in range(color_count):
         if by_season == True:
@@ -450,35 +449,30 @@ def bar_subplotter(log, dates, color_count, count, colors, axes, date_dec, erupt
         axes[count].axvline(x=line_x, color='black', linestyle= 'dashed', dashes= (9,6), linewidth = 1)
     
     legend_handles += [Line2D([0], [0], color='black', linestyle='dashed', dashes= (3,2), label='Volcanic event', linewidth= 1)]
-    custom_reds = ListedColormap(['#8B0000', '#A52A2A', '#CD5C5C', '#DC143C', '#FF0000'])
-    custom_blues = ListedColormap(['#00008B', '#0000CD', '#4169E1', '#6495ED', '#87CEEB'])
+    cmap = plt.cm.bwr
+    selected_colors = cmap([128, 132, 203, 253, 127, 121, 3])
     if elninos != None:
         for j in elninos:
             if j == 'weak nino':
-                line_color = custom_reds(3)
-                legend_handles += [mpatches.Patch(color=line_color, label='weak nino')]
+                line_color = selected_colors[0]
             elif j == 'moderate nino':
-                line_color = custom_reds(2)
-                legend_handles += [mpatches.Patch(color=line_color, label='moderate nino')]
+                line_color = selected_colors[1]
             elif j == 'strong nino':
-                line_color = custom_reds(1)
-                legend_handles += [mpatches.Patch(color=line_color, label='strong nino')]
+                line_color = selected_colors[2]
             elif j == 'very strong nino':
-                line_color = custom_reds(0)
-                legend_handles += [mpatches.Patch(color=line_color, label='very strong nino')]
+                line_color = selected_colors[3]
+                legend_handles += [mpatches.Patch(color=line_color, label='El Niño')]
             elif j == 'weak nina':
-                line_color = custom_blues(2)
-                legend_handles += [mpatches.Patch(color=line_color, label='weak nina')]
+                line_color = selected_colors[4]
             elif j == 'moderate nina':
-                line_color = custom_blues(1)
-                legend_handles += [mpatches.Patch(color=line_color, label='moderate nina')]
+                line_color = selected_colors[5]
             elif j == 'strong nina':
-                line_color = custom_blues(0)
-                legend_handles += [mpatches.Patch(color=line_color, label='strong nina')]
+                line_color = selected_colors[6]
+                legend_handles += [mpatches.Patch(color=line_color, label='La Niña')]
             for i in range(len(elninos[j])):
                 x1 = elninos[j][i][0]
                 x2 = elninos[j][i][1]
-                axes[count].plot([x1, x2], [2.125, 2.125], color=line_color, alpha=1.0, linewidth=6) 
+                axes[count].plot([x1, x2], [y_max + .125, y_max + .125], color=line_color, alpha=1.0, linewidth=6) 
 
     axes[count].set_ylabel(str(roll_count) + " day rolling average precipitation (mm)")
     axes[count].set_xlabel("Year")
