@@ -31,4 +31,3 @@ How to download the precipitation data (TBD)
     - Specify latitude/longitude coordinates
 
 How to make an eruption dataframe (TBD)
-
