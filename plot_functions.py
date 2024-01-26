@@ -7,31 +7,27 @@ import math
 from matplotlib.lines import Line2D
 from helper_functions import volcano_rain_frame, volcano_erupt_dates
 
-# Generates plots
-# def custom_plot(ax, x, y, plot_type, title, xlabel, ylabel, **kwargs):
-    
-#     if plot_type == 'scatter':
-#         ax.scatter(x, y, **kwargs)
-#     elif plot_type == 'bar':
-#         ax.bar(x, y, **kwargs)
-#     elif plot_type == 'barh':
-#         ax.barh(x, y, **kwargs)
-#     else:
-#         raise ValueError("Invalid plot type.")
-
-#     ax.set_title(title)
-#     ax.set_xlabel(xlabel)
-#     ax.set_ylabel(ylabel)
-#     ax.set_show()
-
-#     return
-
-
-# Volcano longitude and latitudes are recorded in a dictionary. "Picks" is the list of volcanos whose eruptions will be considered.
+# Creates histograms that break up eruption data based on quantile of rainfall.
 def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_season=False):
-    fig, axes = plt.subplots(len(volcanos) + 1, 1, figsize=(10, len(rainfall['Date'].unique())//400))
-    plasma_colormap = cm.get_cmap('viridis', 256)
+    """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
+    separately, and also a histogram that puts all of the eruption data together.
 
+    Args:
+        volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
+        eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        rainfall: Satellite rain dataframe for volcanos in chosen region. 
+        color_count: Number of quantiles to break rain data into.
+        roll_count: Number of days to average rain over.
+        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
+
+    Return:
+
+    """
+
+    fig, axes = plt.subplots(len(volcanos) + 1, 1, figsize=(10, len(rainfall['Date'].unique())//400))
+
+    # Selects out color scheme
+    plasma_colormap = cm.get_cmap('viridis', 256)
     color_spacing = 90 // (color_count-1)
     half_count = math.ceil(color_count / 2)
     upp_half = math.floor(color_count / 2)
@@ -39,11 +35,13 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
     reds = [plasma_colormap(135 + i*color_spacing)[:3] for i in range(upp_half)]
     reds.reverse()
     colors = yellows + reds
+
+    # Creates a dictionary where for each volcano, we get an array of eruptions in each quantile.
     totals = {volcano:np.zeros(color_count) for volcano in volcanos}
     categories = ['Quantile ' + str(i+1) for i in range(color_count)]
-
     for pick in totals:
 
+        # Get volcano specific data and order dates by 'roll' amount
         volc_rain = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
         dates = volc_rain.sort_values(by=['roll']).copy()
         dates.dropna()
@@ -54,6 +52,7 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
 
         erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
 
+        # Counts eruptions in each quantile
         for l in range(color_count):
             if by_season == True:
                 for j in range(start, end + 1):
@@ -70,7 +69,8 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
                         if k in quantile:
                             totals[pick][l] += 1
 
-    all_volcs = np.sum(totals[pick] for pick in totals);
+    # Creates an array of eruptions tallied over all volcanos. Then makes a histogram for this array, and then for each volcano individually.
+    all_volcs = np.sum(totals[pick] for pick in totals)
     y_set = int(np.max(all_volcs))
     axes[0].bar(categories, all_volcs, color=colors)
     axes[0].set_ylabel('Volcanic events')
@@ -85,11 +85,29 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
         count += 1       
     plt.show()
 
-    return all_volcs
+    return 
 
 # Plot all volcanos
 def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, eruptions, by_season=False, log_flag=True, elninos=None):
+    """ Primary function for assembling rain data to plot. Calls 'annual_subplotter' and 'bar_subplotter' depending on what type of plot is wanted.
 
+    Args:
+        plot_type: Currently, can either be 'annual_subplotter' or 'bar_subplotter'.
+        volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
+        rainfall: Satellite rain dataframe for volcanos in chosen region. 
+        color_count: Number of quantiles to break rain data into.
+        roll_count: Number of days to average rain over.
+        eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
+        log_flag: Boolean for whether to use a log scale for the rain data.
+        elninos: A dictionary of nino/nina dates where keys are the strength of events and a value is a list of lists of start/end dates for events.
+        (elninos = {'weak nina': [], 'moderate nina': [], 'strong nina': [], 'weak nino': [], 'moderate nino': [], 'strong nino': [], 'very strong nino': []})
+
+    Return:
+
+    """
+
+    # Selects out color scheme
     count = 0
     plasma_colormap = cm.get_cmap('viridis', 256)
     color_spacing = 90 // (color_count-1)
@@ -100,11 +118,13 @@ def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, eruptio
     greens.reverse()
     colors = yellows + greens
 
+    # Sets plot dimensions based on plot_type
     if plot_type == 'bar':
         fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 18))
     elif plot_type == 'annual':
         fig, axes = plt.subplots(len(volcanos), 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, len(rainfall['Date'].unique())//300))
 
+    # Creates a plot for each volcano
     for pick in volcanos:
         legend_handles = [mpatches.Patch(color=colors[i], label='Quantile ' + str(i+1)) for i in range(color_count)]
         volc_rain = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
@@ -124,6 +144,7 @@ def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, eruptio
             annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, color_count, colors, start, end, volcanos, pick, legend_handles, by_season, elninos)
 
         count += 1
+
     # Data plot
     plt.tight_layout()
     plt.show()
@@ -131,11 +152,22 @@ def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, eruptio
     return
 
 def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, color_count, colors, start, end, volcanos, pick, legend_handles, by_season=False, elninos=None):
+    """ Sub-function for plotting rain in horizontal bars: y-axis is year, and x-axis is month.
+
+    Args:
+        Necessary carry-overs from the rain_plotter function. (Need to clean up inputs a bit)
+
+    Return:
+
+    """
+    # Plots eruptions
     volc_x = [((i) % 1) for i in erupt_dates]
     volc_y = [(i // 1) + .45 for i in erupt_dates]
     axes[count, 0].scatter(volc_x, volc_y, color='black', marker='v', s=30, label='Volcanic Events')
     eruption = axes[count, 0].scatter(volc_x, volc_y, color='black', marker='v', s=30, label='Volcanic Events')
     legend_handles += [eruption]
+
+    # Plots rain by quantile, and if by_season is True, then also by year.
     for i in range(color_count):
         if by_season == True:
             for j in range(start, end + 1):
@@ -150,6 +182,7 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
             y = date_dec // 1
             axes[count, 0].scatter(x[i*bin_size:(i+1)*bin_size], y[i*bin_size:(i+1)*bin_size], color=colors[i], marker='s', s =30)
 
+    # Plots nino/nina events
     if elninos != None:
         for j in elninos:
             if j == 'weak nino':
@@ -191,6 +224,7 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
     axes[count, 0].set_title('Precipitation and volcanic events at ' + volcanos[pick][2]) 
     axes[count, 0].legend(handles=legend_handles, fontsize='small')
 
+    # Creates a sideplot that shows total rainfall by year
     totals = []
     years = [i for i in range(start, end+1)]
     for i in years:
@@ -202,12 +236,20 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
     return
 
 def bar_subplotter(dates, color_count, count, colors, axes, date_dec, erupt_dates, roll_count, volcanos, pick, start, legend_handles, end, date_rain, by_season=False, log_flag=True, elninos=None):
-    legend_handles += [mpatches.Patch(color='gray', label='Cumulative precipitation')]
+    """ Sub-function for plotting rain in horizontal bars: y-axis is year, and x-axis is month.
+
+    Args:
+        Necessary carry-overs from the rain_plotter function. (Need to clean up inputs a bit)
+
+    Return:
+
+    """
     if log_flag == True:
         date_rain = np.log(date_rain + 1.25)
 
     y_max = np.max(date_rain)
 
+    # Plots 90 day rain averages, colored by quantile
     for l in range(color_count):
         if by_season == True:
             for j in range(start, end + 1):
@@ -223,14 +265,19 @@ def bar_subplotter(dates, color_count, count, colors, axes, date_dec, erupt_date
             bin_size = len(dates) // color_count
             axes[count].bar(date_dec[l*(bin_size): (l+1)*bin_size], date_rain[l*(bin_size): (l+1)*bin_size], color =colors[l], width = 0.01, alpha = 1)
 
+    # Plots cumulative rainfall in the same plot as the 90 day rain averages.
+    legend_handles += [mpatches.Patch(color='gray', label='Cumulative precipitation')]
     ax2 = axes[count].twinx()
     ax2.bar(dates.Decimal, np.array(dates['cumsum']), color ='gray', width = 0.01, alpha = .05)
     ax2.set_ylabel("Cumulative precipitation (mm)", rotation=270, labelpad= 10)
 
+    # Plots eruptions
     for line_x in erupt_dates:
         axes[count].axvline(x=line_x, color='black', linestyle= 'dashed', dashes= (9,6), linewidth = 1)
     
     legend_handles += [Line2D([0], [0], color='black', linestyle='dashed', dashes= (3,2), label='Volcanic event', linewidth= 1)]
+
+    # Plots nino/nina events
     cmap = plt.cm.bwr
     selected_colors = cmap([128, 132, 203, 253, 127, 121, 3])
     if elninos != None:
@@ -265,3 +312,23 @@ def bar_subplotter(dates, color_count, count, colors, axes, date_dec, erupt_date
 
     axes[count].legend(handles=legend_handles, loc='upper left', fontsize='small')
     return
+
+### UNDER CONSTRUCTION ###
+# Generates plots
+# def custom_plot(ax, x, y, plot_type, title, xlabel, ylabel, **kwargs):
+    
+#     if plot_type == 'scatter':
+#         ax.scatter(x, y, **kwargs)
+#     elif plot_type == 'bar':
+#         ax.bar(x, y, **kwargs)
+#     elif plot_type == 'barh':
+#         ax.barh(x, y, **kwargs)
+#     else:
+#         raise ValueError("Invalid plot type.")
+
+#     ax.set_title(title)
+#     ax.set_xlabel(xlabel)
+#     ax.set_ylabel(ylabel)
+#     ax.set_show()
+
+#     return
