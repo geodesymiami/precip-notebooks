@@ -20,7 +20,7 @@ Hindcast_regression notebooks
 
 Helper Scripts
 
-    - Helper_scripts.py
+    - Helper_functions.py
 
     - Plot_functions.py
 
