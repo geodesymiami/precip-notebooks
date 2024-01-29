@@ -4,8 +4,105 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.patches as mpatches
 import math
+import seaborn as sns
 from matplotlib.lines import Line2D
-from helper_functions import volcano_rain_frame, volcano_erupt_dates
+from helper_functions import volcano_rain_frame, volcano_erupt_dates, date_to_decimal_year
+
+
+# Find eruptions that don't occur in El Ninos
+def non_nino_eruptions(eruptions, elninos):
+
+    erupt_dates = np.array(eruptions['Decimal'])
+    non_nino = []
+    nino = []
+    for i in erupt_dates:
+        nino_erupt = False
+        for j in elninos['strong nino']:
+            if i >= j[0] and i <= j[1]:
+                nino.append(i)
+                nino_erupt = True
+                break
+        for j in elninos['very strong nino']:
+            if i >= j[0] and i <= j[1]:
+                nino.append(i)
+                nino_erupt = True
+                break
+        if nino_erupt == False:
+            non_nino.append(i)
+
+    return non_nino, nino
+
+# Heat map of when eruptions occur
+def activity_by_day(eruptions, elninos):
+    fig, axes = plt.subplots(3, 1, figsize=(12,15))
+
+    decimal_erupts = np.array(eruptions['Decimal'])
+    x = [((i) % 1) for i in decimal_erupts]
+    bin_edges = [i * 1/365 for i in range(365)]
+    bin_indices = np.digitize(x, bin_edges)
+    data1 = np.zeros((1, 365))
+    for i in bin_indices:
+        for j in range(20):
+            data1[0][i-11+j] += 1
+
+    decimal_erupts_non_nino, decimal_erupts_nino = non_nino_eruptions(eruptions, elninos)
+    x = [((i) % 1) for i in decimal_erupts_non_nino]
+    bin_edges = [i * 1/365 for i in range(365)]
+    bin_indices = np.digitize(x, bin_edges)
+    data2 = np.zeros((1, 365))
+    for i in bin_indices:
+        for j in range(20):
+            data2[0][i-11+j] += 1
+
+    x = [((i) % 1) for i in decimal_erupts_nino]
+    bin_edges = [i * 1/365 for i in range(365)]
+    bin_indices = np.digitize(x, bin_edges)
+    data3 = np.zeros((1, 365))
+    for i in bin_indices:
+        for j in range(20):
+            data3[0][i-11+j] += 1
+
+    sns.heatmap(data1, ax=axes[0], cbar=True, cbar_kws={"label": "Eruption count"}, annot=False, fmt=".2f", cmap="YlGnBu")
+    sns.heatmap(data2, ax=axes[1], cbar=True, cbar_kws={"label": "Eruption count"}, annot=False, fmt=".2f", cmap="YlGnBu", vmax=4)
+    sns.heatmap(data3, ax=axes[2], cbar=True, cbar_kws={"label": "Eruption count"}, annot=False, fmt=".2f", cmap="YlGnBu", vmax=4)
+
+    axes[0].set_title("All Eruptions")
+    axes[1].set_title("Eruptions Not During El Niño Periods")
+    axes[2].set_title("Eruptions During El Niño Periods")
+
+    axes[0].set_xlabel("Month")
+    axes[1].set_xlabel("Month")
+    axes[2].set_xlabel("Month")
+
+    axes[0].set_yticks([])
+    axes[1].set_yticks([])
+    axes[2].set_yticks([])
+
+    axes[0].set_xticks([(1/12)*k*365 for k in range(12)], ['11', '12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'])
+    axes[1].set_xticks([(1/12)*k*365 for k in range(12)], ['11', '12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'])
+    axes[2].set_xticks([(1/12)*k*365 for k in range(12)], ['11', '12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'])
+    plt.tight_layout()
+    plt.show()        
+
+# Plot average rain for each day of the year
+def average_daily(rainfall, pick):
+
+    rainfall['MonthDay'] = rainfall['Decimal'].apply(lambda x: (x) % 1)
+    days = np.unique(np.array(rainfall['MonthDay']))
+    rain = np.zeros(len(days))
+    for i in range(len(rain)):
+        rain[i] = np.mean(np.array(rainfall['roll'][rainfall['MonthDay'] == days[i]]))
+    
+    plt.figure(figsize=(15, 6))
+    plt.plot(days, rain)
+    
+    plt.xlabel('Month')
+    plt.ylabel('Average Rain')
+    plt.title('Average Rain by Day of Year at ' + pick)
+    plt.xticks([i/12 for i in range(12)], ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
+
+    plt.show()
+    return
 
 # Creates histograms that break up eruption data based on quantile of rainfall.
 def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_season=False):
