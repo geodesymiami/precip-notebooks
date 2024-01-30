@@ -7,7 +7,9 @@ import math
 import seaborn as sns
 from matplotlib.lines import Line2D
 from helper_functions import volcano_rain_frame, volcano_erupt_dates, date_to_decimal_year
-
+import geopandas as gpd
+from shapely.geometry import box
+from shapely.geometry import box, Polygon, MultiPolygon
 
 # Find eruptions that don't occur in El Ninos
 def non_nino_eruptions(eruptions, elninos):
@@ -21,12 +23,6 @@ def non_nino_eruptions(eruptions, elninos):
             if i >= j[0] and i <= j[1]:
                 nino.append(i)
                 nino_erupt = True
-                break
-        for j in elninos['very strong nino']:
-            if i >= j[0] and i <= j[1]:
-                nino.append(i)
-                nino_erupt = True
-                break
         if nino_erupt == False:
             non_nino.append(i)
 
@@ -35,7 +31,7 @@ def non_nino_eruptions(eruptions, elninos):
 # Heat map of when eruptions occur
 def activity_by_day(eruptions, elninos):
     fig, axes = plt.subplots(3, 1, figsize=(12,15))
-
+    eruptions['Decimal'] = eruptions.Start.apply(date_to_decimal_year)
     decimal_erupts = np.array(eruptions['Decimal'])
     x = [((i) % 1) for i in decimal_erupts]
     bin_edges = [i * 1/365 for i in range(365)]
@@ -82,7 +78,8 @@ def activity_by_day(eruptions, elninos):
     axes[1].set_xticks([(1/12)*k*365 for k in range(12)], ['11', '12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'])
     axes[2].set_xticks([(1/12)*k*365 for k in range(12)], ['11', '12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'])
     plt.tight_layout()
-    plt.show()        
+    plt.show()    
+    return    
 
 # Plot average rain for each day of the year
 def average_daily(rainfall, pick):
@@ -283,9 +280,11 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
     if elninos != None:
         for j in elninos:
             if j == 'weak nino':
+                continue
                 line_color = 'gray'
                 # legend_handles += [mpatches.Patch(color=line_color, label='weak nino')]
             elif j == 'moderate nino':
+                continue
                 line_color = 'gray'
                 # legend_handles += [mpatches.Patch(color=line_color, label='moderate nino')]
             elif j == 'strong nino':
@@ -295,12 +294,15 @@ def annual_subplotter(volc_rain, erupt_dates, axes, count, date_dec, dates, colo
                 line_color = 'black'
                 legend_handles += [mpatches.Patch(color=line_color, label='very strong Niño')]
             elif j == 'weak nina':
+                continue
                 line_color = 'gray'
                 # legend_handles += [mpatches.Patch(color=line_color, label='weak nina')]
             elif j == 'moderate nina':
+                continue
                 line_color = 'gray'
                 # legend_handles += [mpatches.Patch(color=line_color, label='moderate nina')]
             elif j == 'strong nina':
+                continue
                 line_color = 'gray'
                 # legend_handles += [mpatches.Patch(color=line_color, label='strong nina')]
             for i in range(len(elninos[j])):
@@ -408,6 +410,104 @@ def bar_subplotter(dates, color_count, count, colors, axes, date_dec, erupt_date
     axes[count].set_xticks(ticks=[start + (2*i) for i in range(((end - start) // 2) + 1)], labels=["'" + str(start + (2*i))[-2:] for i in range(((end - start) // 2) + 1)])
 
     axes[count].legend(handles=legend_handles, loc='upper left', fontsize='small')
+    return
+
+# Used in spatial heat map below
+def average_in_distance(arr, i, j, distance):
+    rows, cols = arr.shape
+    total = 0
+    count = 0
+
+    for x in range(max(0, i - distance), min(rows, i + distance + 1)):
+        for y in range(max(0, j - distance), min(cols, j + distance + 1)):
+            total += arr[x, y]
+            count += 1
+
+    return total / count
+
+# Creates a heat map for average rain per day across a bounding box specified region
+def spatial_heat_map(full_rain, season, long_min, long_max, lat_min, lat_max, granular=10):
+    rain_in_region = full_rain[(full_rain['Longitude'] <= long_max) & (full_rain['Latitude'] <= lat_max) & (full_rain['Latitude'] >= lat_min) & (full_rain['Longitude'] >= long_min)]
+    unique_trips = rain_in_region.groupby(['Longitude', 'Latitude', 'Decimal'])['Precipitation'].mean()
+    to_plot = unique_trips.reset_index()
+    longs = np.array(to_plot['Longitude'].drop_duplicates())
+    lats = np.array(to_plot['Latitude'].drop_duplicates())
+    lats = lats[::-1]
+    data = np.zeros((len(lats), len(longs)))
+
+    if season == 'wet':
+        for i in range(len(lats)):
+            for j in range(len(longs)):
+                data[i][j] = to_plot['Precipitation'][(to_plot['Longitude'] == longs[j]) & (to_plot['Latitude'] == lats[i]) & ((to_plot['Decimal'] < 0.417) | (to_plot['Decimal'] >= 0.917))].sum()
+    
+    if season == 'dry':
+        for i in range(len(lats)):
+            for j in range(len(longs)):
+                data[i][j] = to_plot['Precipitation'][(to_plot['Longitude'] == longs[j]) & (to_plot['Latitude'] == lats[i]) & ((to_plot['Decimal'] >= 0.417) & (to_plot['Decimal'] < 0.917))].sum()
+    
+    times_ten = np.repeat(data, granular, axis=0)
+    times_ten = np.repeat(times_ten, granular, axis=1)
+
+    rows, cols = times_ten.shape
+    result_array = np.zeros_like(times_ten, dtype=float)
+
+    distance = granular
+    for i in range(rows):
+        for j in range(cols):
+            result_array[i, j] = average_in_distance(times_ten, i, j, distance)
+
+    plt.figure(figsize=(9,7))
+    sns.heatmap(result_array, annot=False, fmt=".2f", cmap="YlGnBu")
+    contour = plt.contour(result_array, colors='k')
+    plt.clabel(contour, inline=True, fontsize=8)
+
+    plt.title("Average Cumulative Precipitation from December through May (mm)", fontsize='10')
+    plt.xlabel("Longitude (degrees)", fontsize='10')
+    plt.ylabel("Latitude (degrees)", fontsize='10')
+    lat_range = int((((lat_max-lat_min)*10) // 2)) + 1
+    long_range = int(((long_max - long_min)*10)) + 1
+    plt.yticks([granular*2*i for i in range(lat_range)], [round((lat_max + .05) - (.1 * 2*i), 2) for i in range(lat_range)], rotation='horizontal')
+    plt.xticks([granular*i for i in range(long_range)], [round((long_min-.05) + (.1 * i), 2) for i in range(long_range)], rotation=45)
+
+    # points = [(1.5*granular, 5.5*granular), (3.5*granular, 2*granular), (3*granular, 11.25*granular), (5.75*granular, 10.25*granular), (5.75*granular,6.25*granular), (4.1*granular,4*granular)]
+    # labels = ['F', 'W', 'CA', 'SN', 'A', 'D']
+
+    # x, y = zip(*points)
+
+    # sns.scatterplot(x=x, y=y, marker='o', color='red', s=100)
+
+    # for i in range(len(labels)):
+    #     plt.annotate(labels[i], (x[i], y[i]), textcoords="offset points", xytext=(0, 10), ha='center', fontsize='20')
+
+    shapefile_path = "/Users/jonathanquartin/Downloads/ECU_adm/ECU_adm0.shp"
+    gdf = gpd.read_file(shapefile_path)
+
+    # Create a bounding box geometry
+    bbox = box(long_min, lat_min, long_max, lat_max)
+
+    # Filter the GeoDataFrame based on the bounding box
+    filtered_gdf = gdf[gdf.geometry.intersects(bbox)]
+
+    for index, row in filtered_gdf.iterrows():
+        geometry = row['geometry']
+        coordinates = []
+        if isinstance(geometry, MultiPolygon):
+            for polygon in geometry.geoms:
+                # Extract coordinates from each polygon
+                x_coords, y_coords = polygon.exterior.xy
+                coordinates.extend(list(zip(x_coords, y_coords)))
+        elif isinstance(geometry, Polygon):
+            # Extract coordinates from a single Polygon
+            x_coords, y_coords = geometry.exterior.xy
+            coordinates.extend(list(zip(x_coords, y_coords)))
+
+        x = np.array([(i[0] - (long_min - .05)) * 100 for i in coordinates])
+        y = np.array([(lat_max + .05 - i[1]) * 100 for i in coordinates])
+        for i in range(len(x) - 1):
+            if np.sqrt((x[i] - x[i+1])**2 + (y[i] - y[i+1])**2) < 10:
+                plt.plot([x[i], x[i+1]], [y[i], y[i+1]], color='red', linestyle='-', linewidth=2)
+
+    plt.show()
     return
 
 ### UNDER CONSTRUCTION ###

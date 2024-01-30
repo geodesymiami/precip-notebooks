@@ -98,7 +98,7 @@ def rain_predictor(rainfall, volcanos, compare_site, roll_count, print_summary):
     for pick in volcanos:
 
         rain_frame = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
-        model = regressor(rain_frame, volcanos, pick, site, roll_count, print_summary)
+        model = regressor(rain_frame, site, print_summary)
         coefficients = model.params
         coef = coefficients.iloc[1]
         intercept = coefficients.iloc[0]
