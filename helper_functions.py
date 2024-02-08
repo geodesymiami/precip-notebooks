@@ -5,8 +5,21 @@ from datetime import datetime
 import statsmodels.api as sm
 from lifelines import CoxTimeVaryingFitter
 
+# Computes the recurrence times for volcanoes
+def recurrences(volcanic_events, sites_dict):
+    eruptions = volcanic_events.copy()
+    eruptions['Decimal'] = eruptions.Start.apply(date_to_decimal_year)
+    recurrences = {}
+    for i in sites_dict:
+
+        erupt_dates = list(eruptions['Decimal'][eruptions['Volcano'] == i])
+        recurrences[i] = min([erupt_dates[i+1] - erupt_dates[i] for i in range(len(erupt_dates) - 1)]) / 2
+
+    return recurrences
+
+
 # Scatter plot of 90 day satellite rain at lat/lon site vs Ayora or Bellavista gauge rain data
-def scatter_compare(rainfall, pick, compare_site, site_name, roll_count):
+def scatter_compare(rainfall, sites_dict, gauges_dict, compare_site, site_name, roll_count):
     """ Creates a scatter plot. 
         x-value in graph = Gauge rolling rain measurement at gauge site.
         y-value in graph = Satellite rolling rain measurement at lat/lon site.
@@ -23,21 +36,52 @@ def scatter_compare(rainfall, pick, compare_site, site_name, roll_count):
 
     """
 
+    fig, axes = plt.subplots((len(sites_dict) // 2) + 1, 2, figsize=(10, 15))
+
+    rain_frame = volcano_rain_frame(rainfall, gauges_dict, site_name, roll_count)
     # Cleans and aligns dates from gauge and satellite dataframes
     site = data_cleaner(compare_site, roll_count) 
 
-    compare_frame = rainfall.merge(site, on='Date', how='inner')
+    compare_frame = rain_frame.merge(site, on='Date', how='inner')
 
     # Plots the data
-    plt.figure(figsize=(9,5))
 
-    plt.scatter(compare_frame['roll_two'], compare_frame['roll'], color ='maroon')
+    axes[0, 0].scatter(compare_frame['roll_two'], compare_frame['roll'], color ='maroon')
+    model = regressor(rain_frame, compare_site, True)
+    coefficients = model.params
+    coef = coefficients.iloc[1]
+    intercept = coefficients.iloc[0]
+    axes[0, 0].plot(compare_frame['roll_two'], compare_frame['roll_two'].apply(lambda x: (coef * x) + intercept), color ='black', alpha=1.0, linewidth=3)
+    axes[0, 0].set_xlabel(site_name + ' ' + str(roll_count) + " day gauge rain average (mm)") 
+    axes[0, 0].set_ylabel(str(site_name) + ' ' + str(roll_count) + " day satellite rain average (mm)") 
+    axes[0, 0].set_title(site_name + ' gauge vs ' + str(site_name) + ' satellite') 
 
-    plt.xlabel(site_name + ' ' + str(roll_count) + " day gauge rain average (mm)") 
-    plt.ylabel(str(pick) + ' ' + str(roll_count) + " day satellite rain average (mm)") 
-    plt.title('Plot of rain at ' + site_name + ' against rain at ' + str(pick)) 
-    # Data plot
-    plt.show()  
+    fig.delaxes(axes[0, 1])
+
+    count = 0
+    for pick in sites_dict:
+
+        rain_frame = volcano_rain_frame(rainfall, sites_dict, pick, roll_count)
+    
+        # Cleans and aligns dates from gauge and satellite dataframes
+        site = data_cleaner(compare_site, roll_count) 
+
+        compare_frame = rain_frame.merge(site, on='Date', how='inner')
+
+        # Plots the data
+
+        axes[(count // 2) + 1, count % 2].scatter(compare_frame['roll_two'], compare_frame['roll'], color ='maroon')
+        print(str(pick))
+        model = regressor(rain_frame, compare_site, True)
+        coefficients = model.params
+        coef = coefficients.iloc[1]
+        intercept = coefficients.iloc[0]
+        axes[(count // 2) + 1, count % 2].plot(compare_frame['roll_two'], compare_frame['roll_two'].apply(lambda x: (coef * x) + intercept), color ='black', alpha=1.0, linewidth=3)
+        axes[(count // 2) + 1, count % 2].set_xlabel(site_name + ' ' + str(roll_count) + " day gauge rain average (mm)") 
+        axes[(count // 2) + 1, count % 2].set_ylabel(str(sites_dict[pick][2]) + ' ' + str(roll_count) + " day satellite rain average (mm)") 
+        axes[(count // 2) + 1, count % 2].set_title(site_name + ' gauge vs ' + str(sites_dict[pick][2]) + ' satellite') 
+
+        count += 1
 
     return
 
@@ -52,7 +96,7 @@ def data_cleaner(dataframe, roll_count):
     return frame
 
 # Performs a linear regression on rolling rainfall at two locations
-def regressor(rainfall, compare_site, print_summary):
+def regressor(rainfall, compare_site, print_summary=False):
     """ 
     Args:
         rainfall: Rain dataframe that has been pre-processed with volcano_rain_frame function.
@@ -68,15 +112,15 @@ def regressor(rainfall, compare_site, print_summary):
     compare_frame = rainfall.merge(compare_site, on='Date', how='inner')
 
     # Runs regression using the statsmodels package
-    X_constants = sm.add_constant(compare_frame['roll'])
-    model_sm = sm.OLS(compare_frame['roll_two'], X_constants).fit()
+    X_constants = sm.add_constant(compare_frame['roll_two'])
+    model_sm = sm.OLS(compare_frame['roll'], X_constants).fit()
     if print_summary == True:
         print(model_sm.summary())
 
     return model_sm
 
 # Applies linear regression to generate a dataframe of predicted rainfall values
-def rain_predictor(rainfall, volcanos, compare_site, roll_count, print_summary):
+def rain_predictor(rainfall, volcanos, compare_site, roll_count, print_summary=False):
     """ Creates a new dataframe with rainfall at volcano sites given by feeding gauge data into linear regression model. 
 
     Args:

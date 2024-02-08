@@ -3,7 +3,7 @@ import numpy as np
 
 
 # Strength finder
-def elnino_strengths(oni, val, strength):
+def elnino_strengths(oni, val, strength, cutoff):
     """ Determines the date ranges for El Nino or La Nina events of a specified strength.
 
     Typical classification of nino/nina events:
@@ -38,7 +38,7 @@ def elnino_strengths(oni, val, strength):
             if oni_array[count][3] >= val:
                 first = count
                 event = True
-                for j in range(4):
+                for j in range(cutoff-1):
                     count += 1
                     if oni_array[count][3] < val:
                         event = False
@@ -55,7 +55,7 @@ def elnino_strengths(oni, val, strength):
             if oni_array[count][3] <= val:
                 first = count
                 event = True
-                for j in range(4):
+                for j in range(cutoff-1):
                     count += 1
                     if oni_array[count][3] > val:
                         event = False
