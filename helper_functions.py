@@ -6,14 +6,14 @@ import statsmodels.api as sm
 from lifelines import CoxTimeVaryingFitter
 
 # Computes the recurrence times for volcanoes
-def recurrences(volcanic_events, sites_dict):
+def recurrences(volcanic_events, sites_dict, duration=.75):
     eruptions = volcanic_events.copy()
     eruptions['Decimal'] = eruptions.Start.apply(date_to_decimal_year)
     recurrences = {}
     for i in sites_dict:
 
         erupt_dates = list(eruptions['Decimal'][eruptions['Volcano'] == i])
-        recurrences[i] = min([erupt_dates[i+1] - erupt_dates[i] for i in range(len(erupt_dates) - 1)]) / 2
+        recurrences[i] = duration
 
     return recurrences
 

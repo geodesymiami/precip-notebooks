@@ -1,6 +1,22 @@
 import pandas as pd 
 import numpy as np
 
+# Find eruptions that don't occur in El Ninos
+def non_nino_eruptions(eruptions, elninos):
+
+    erupt_dates = np.array(eruptions['Decimal'])
+    non_nino = []
+    nino = []
+    for i in erupt_dates:
+        nino_erupt = False
+        for j in elninos['strong nino']:
+            if i >= j[0] and i <= j[1]:
+                nino.append(i)
+                nino_erupt = True
+        if nino_erupt == False:
+            non_nino.append(i)
+
+    return non_nino, nino
 
 # Strength finder
 def elnino_strengths(oni, val, strength, cutoff):
