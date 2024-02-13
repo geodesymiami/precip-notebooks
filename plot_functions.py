@@ -7,28 +7,12 @@ import math
 import seaborn as sns
 from matplotlib.lines import Line2D
 from helper_functions import volcano_rain_frame, volcano_erupt_dates, date_to_decimal_year, recurrences
+from el_nino_functions import non_nino_eruptions
 import geopandas as gpd
 from shapely.geometry import box
 from shapely.geometry import box, Polygon, MultiPolygon
 
-# Find eruptions that don't occur in El Ninos
-def non_nino_eruptions(eruptions, elninos):
-
-    erupt_dates = np.array(eruptions['Decimal'])
-    non_nino = []
-    nino = []
-    for i in erupt_dates:
-        nino_erupt = False
-        for j in elninos['strong nino']:
-            if i >= j[0] and i <= j[1]:
-                nino.append(i)
-                nino_erupt = True
-        if nino_erupt == False:
-            non_nino.append(i)
-
-    return non_nino, nino
-
-# Heat map of when eruptions occur
+# Heat map of when eruptions occur (Not currently used in repo)
 def activity_by_day(eruptions, elninos):
     fig, axes = plt.subplots(3, 1, figsize=(12,15))
     eruptions['Decimal'] = eruptions.Start.apply(date_to_decimal_year)
@@ -102,9 +86,9 @@ def average_daily(rainfall, pick):
     return
 
 # Creates histograms that break up eruption data based on quantile of rainfall.
-def by_strength(volcanos, eruptions, rainfall, color_count, roll_count):
+def by_strength(volcanos, eruptions, rainfall, color_count, roll_count, elninos=None, recur=False):
 
-    fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, len(rainfall['Date'].unique())//400))
+    fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 20))
 
     # Selects out color scheme
     plasma_colormap = cm.get_cmap('viridis', 256)
@@ -116,27 +100,52 @@ def by_strength(volcanos, eruptions, rainfall, color_count, roll_count):
     reds.reverse()
     colors = yellows + reds
 
+    legend_handles = [mpatches.Patch(color=colors[i], label='Quantile ' + str(i+1)) for i in range(color_count)]
+    cmap = plt.cm.bwr
+    selected_colors = cmap([253, 3])
+    strengths = ['weak nino', 'weak nina']
+    legend_handles += [Line2D([0], [0], color='black', linestyle='dashed', dashes= (3,2), label='Volcanic event', linewidth= 1)]
+    legend_handles += [Line2D([0], [0], color=selected_colors[0], linestyle='dashed', dashes= (3,2), label='El Niño volcanic event', linewidth= 1)]
+    legend_handles += [Line2D([0], [0], color=selected_colors[1], linestyle='dashed', dashes= (3,2), label='La Niña volcanic event', linewidth= 1)]
+    recurs = recurrences(eruptions, volcanos)
+
     # Creates a dictionary where for each volcano, we get an array of eruptions in each quantile.
     totals = {volcano:np.zeros(color_count) for volcano in volcanos}
     categories = ['Quantile ' + str(i+1) for i in range(color_count)]
-    erupt_vals = []
+    erupt_vals = {pick:[] for pick in totals}
+    all_vals = {}
     count = 0
     for pick in totals:
 
+        volc_init = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
+        start = int(volc_init['Decimal'].min() // 1)
+        end = int(volc_init['Decimal'].max() // 1)
+
+        erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
+        if recur == True:
+            volc_rain = volc_init.copy()
+            for i in range(len(erupt_dates)):
+                volc_rain = volc_rain[~((volc_init['Decimal'] > erupt_dates[i]) & (volc_init['Decimal'] < erupt_dates[i] + recurs[pick]))].copy()
+                
+        else:
+            volc_rain = volc_init.copy()
+
         # Get volcano specific data and order dates by 'roll' amount
-        volc_rain = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
         dates = volc_rain.sort_values(by=['roll']).copy()
         dates.dropna()
         date_dec = np.array(dates['Decimal'])
         date_rain = np.array(dates['roll'])
+
+        all_vals[pick] = date_rain
+        for k in erupt_dates:
+            for i in range(len(date_dec)):
+                if k == date_dec[i]:
+                    erupt_vals[pick].append(date_rain[i])
+
         date_rain = np.log(date_rain + 1.25)
 
-        start = int(dates['Decimal'].min() // 1)
-        end = int(dates['Decimal'].max() // 1)
 
-        erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
 
-        length = len(date_dec)
 
         # Counts eruptions in each quantile
         bin_size = len(dates) // color_count
@@ -144,16 +153,30 @@ def by_strength(volcanos, eruptions, rainfall, color_count, roll_count):
             y = date_rain[l*(bin_size): (l+1)*bin_size]
             axes[count].bar(range(l*(bin_size), (l+1)*bin_size), y, color=colors[l])
             axes[count].set_title(str(pick))
-            axes[count].set_xlabel('Day sorted by 90 day rain average')
+            axes[count].set_xlabel('Day index when sorted by 90 day rain average')
             axes[count].set_ylabel('Rainfall (mm)')
-
+        # xticks = []
+        # xlabels = []
         for i in range(len(date_dec)):
             if date_dec[i] in erupt_dates:
-                axes[count].axvline(x=i, color='black', linestyle= 'dashed', dashes= (9,6), linewidth = 1)
+                # xticks.append(i)
+                # xlabels.append(str(int((12 * (date_dec[i] % 1)) // 1)+1) + '/' + str(int(date_dec[i] // 1))[2:])
+                date = date_dec[i]
+                line_color = 'black'
+                if elninos != None:
+                    for j in range(len(strengths)):
+                        for k in elninos[strengths[j]]:
+                            if date >= k[0] and date <= k[1]:
+                                line_color = selected_colors[j]
+                axes[count].axvline(x=i, color=line_color, linestyle= 'dashed', dashes= (9,6), linewidth = 1)
+                # axes[count].set_xticks(xticks)
+                # axes[count].set_xticklabels(xlabels, rotation=45)
+        axes[count].legend(handles=legend_handles, fontsize='small')
         count += 1
+
     plt.show()
 
-    return erupt_vals
+    return all_vals, erupt_vals
 
 # Creates histograms that break up eruption data based on quantile of rainfall.
 def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_season=False, recur=False):
@@ -187,7 +210,7 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
     # Creates a dictionary where for each volcano, we get an array of eruptions in each quantile.
     totals = {volcano:np.zeros(color_count) for volcano in volcanos}
     categories = ['Quantile ' + str(i+1) for i in range(color_count)]
-    erupt_vals = []
+    erupt_vals = {pick:[] for pick in totals}
     recurs = recurrences(eruptions, volcanos)
 
 
@@ -211,14 +234,11 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
         dates = dates.dropna()
         date_dec = np.array(dates['Decimal'])
         date_rain = np.array(dates['roll'])
-
         
-
-        length = len(date_dec)
         for k in erupt_dates:
             for i in range(len(date_dec)):
                 if k == date_dec[i]:
-                    erupt_vals.append(date_rain[i])
+                    erupt_vals[pick].append(date_rain[i])
 
 
         # Counts eruptions in each quantile
@@ -286,14 +306,14 @@ def rain_plotter(plot_type, volcanos, rainfall, color_count, roll_count, eruptio
     greens = [plasma_colormap(135 + i*color_spacing)[:3] for i in range(upp_half)]
     greens.reverse()
     colors = yellows + greens
-
-    recurs = recurrences(eruptions, volcanos)
+    if recur == True:
+        recurs = recurrences(eruptions, volcanos)
 
     # Sets plot dimensions based on plot_type
     if plot_type == 'bar':
-        fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 18))
+        fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 4.5 * len(volcanos)))
     elif plot_type == 'annual':
-        fig, axes = plt.subplots(len(volcanos), 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, len(rainfall['Date'].unique())//300))
+        fig, axes = plt.subplots(len(volcanos), 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, (len(rainfall['Date'].unique())//1200) * len(volcanos)))
 
     # Creates a plot for each volcano
     for pick in volcanos:
