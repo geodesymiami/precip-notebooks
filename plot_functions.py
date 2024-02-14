@@ -428,9 +428,8 @@ def bar_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_seaso
     """ Sub-function for plotting rain in horizontal bars: y-axis is year, and x-axis is month.
 
     Args:
-        plot_type: Currently, can either be 'annual_subplotter' or 'bar_subplotter'.
-        volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Negra, Sierra': (-91.15, -.85, 'Sierra Negra')}).
-            -- The keys are string names for Volcano names based on how they are stored in the volcano data. The third entry in each tuple
+        volcanos: A dictionary of sites (eg. volcanos = {'Wolf': (-91.35, .05, 'Wolf'), 'Negra, Sierra': (-91.15, -.85, 'Sierra Negra')}).
+            -- The keys are string names for Volcano names based on how they are stored in the eruptions dataframe (see below description of 'eruptions'). The third entry in each tuple
             is how you'd like the volcano name to appear in the plot. 
         rainfall: Rain dataframe with columns: 'Date', 'Longitude', 'Latitude', 'Precipitation'
         color_count: Number of quantiles to break rain data into.
@@ -438,12 +437,13 @@ def bar_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_seaso
         eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
         by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
         log_flag: Boolean for whether to use a log scale for the rain data.
-        elninos: A dictionary of nino/nina dates where keys are the strength of events and a value is a list of lists of start/end dates for events.
-        (elninos = {'weak nina': [], 'moderate nina': [], 'strong nina': [], 'weak nino': [], 'moderate nino': [], 'strong nino': [], 'very strong nino': []})
+        elninos: A dictionary of nino/nina date ranges, where keys are the strength of events and a value is a list of lists of start/end dates for events (as decimals).
+        (elninos = eg. {'weak nina': [], 'moderate nina': [[2007.7041, 2008.2877], [2020.789, 2021.0384]], 'strong nina': [[2007.8712, 2008.1233], [2010.7041, 2010.9534]], 'weak nino': [], 'moderate nino': [], 'strong nino': [], 'very strong nino': []})
 
     Return:
 
     """
+    # Plot distinction for one volcano versus multiple volcanos
     if len(volcanos) > 1:
         fig, axes = plt.subplots(len(volcanos), 1, figsize=(10, 4.5 * len(volcanos)))
     else:
@@ -460,8 +460,9 @@ def bar_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_seaso
     greens.reverse()
     colors = yellows + greens 
 
-        # Creates a plot for each volcano
+    # Creates a plot for each volcano
     for pick in volcanos:
+        # Plot distinction for one volcano versus multiple volcanos
         if len(volcanos) > 1:
             axis = axes[count]
         else:
@@ -495,6 +496,7 @@ def bar_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_seaso
         if log_flag == True:
             date_rain = np.log(date_rain + 1.25)
 
+        # Used in plotting to make y range similar to max bar height 
         y_max = np.max(date_rain)
 
         # Plots 90 day rain averages, colored by quantile
