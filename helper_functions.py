@@ -5,6 +5,76 @@ from datetime import datetime
 import statsmodels.api as sm
 from lifelines import CoxTimeVaryingFitter
 
+# Creates histograms that break up eruption data based on quantile of rainfall.
+def mix_counter(volcanos, eruptions, rainfall, roll_count, recur=False):
+    """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
+    separately, and also a histogram that puts all of the eruption data together.
+
+    Args:
+        volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
+        eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        rainfall: Satellite rain dataframe for volcanos in chosen region. 
+        color_count: Number of quantiles to break rain data into.
+        roll_count: Number of days to average rain over.
+        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
+
+    Return:
+
+    """
+
+    # Creates a dictionary where for each volcano, we get an array of eruptions in each quantile.
+    totals = {volcano:0 for volcano in volcanos}
+    erupt_vals = {pick:[] for pick in totals}
+    recurs = recurrences(eruptions, volcanos)
+    rain_tots = {pick:[] for pick in totals}
+
+
+    for pick in totals:
+
+        # Get volcano specific data and order dates by 'roll' amount
+        volc_init = volcano_rain_frame(rainfall, volcanos, pick, roll_count)
+        start = int(volc_init['Decimal'].min() // 1)
+        end = int(volc_init['Decimal'].max() // 1)
+
+        erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
+        if recur == True:
+            volc_rain = volc_init.copy()
+            for i in range(len(erupt_dates)):
+                volc_rain = volc_rain[~((volc_init['Decimal'] > erupt_dates[i]) & (volc_init['Decimal'] < erupt_dates[i] + recurs[pick]))].copy()
+                
+        else:
+            volc_rain = volc_init.copy()
+            
+        dates = volc_rain.sort_values(by=['roll']).copy()
+        dates = dates.dropna()
+        date_dec = np.array(dates['Decimal'])
+        date_rain = np.array(dates['roll'])
+        
+        for k in erupt_dates:
+            for i in range(len(date_dec)):
+                if k == date_dec[i]:
+                    erupt_vals[pick].append(date_rain[i])
+
+        rain_by_year = []
+        for k in range(start, end + 1):
+            rain_by_year.append(volc_rain['Precipitation'][(volc_rain['Date'] >= str(k)) & (volc_rain['Date'] < str(k+1))].sum()) 
+        mean = sum(rain_by_year) / (len(rain_by_year))
+        
+        count=0
+        for j in range(start, end + 1):
+            length = ((0*mean) + (50*rain_by_year[count])) / ((100*mean) + (100*rain_by_year[count])) 
+            dates_j = np.array([day for day in date_dec if (day // 1) == j])
+            bin_size = int((length * len(dates_j)) // 1)
+            rain_tots[pick].append(bin_size)
+            quantile = dates_j[-(bin_size):]
+            for k in erupt_dates:
+                if k in quantile:
+                    totals[pick] += 1  
+                    erupt_vals[pick].append(k) 
+            count+=1
+
+    return totals, erupt_vals, rain_tots
+
 # Computes the recurrence times for volcanoes
 def recurrences(volcanic_events, sites_dict, duration=.75):
     eruptions = volcanic_events.copy()
