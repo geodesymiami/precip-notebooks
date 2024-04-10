@@ -223,8 +223,7 @@ def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range, start=Non
 
         erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
 
-        new_frame = pd.DataFrame({'Volcano': [pick for i in range(len(erupt_dates))], 'Date': erupt_dates})
-
+        yes_dict = {'Volcano': [pick for i in range(len(erupt_dates))], 'Date': erupt_dates}
         for quant in range(len(quant_range)):
             for roll in range(len(roll_range)):
 
@@ -245,8 +244,9 @@ def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range, start=Non
                         yeses.append(1)
                     else:
                         yeses.append(0)
-                new_frame[(quant_range[quant], roll_range[roll])] = yeses
+                yes_dict[(quant_range[quant], roll_range[roll])] = yeses
 
+        new_frame = pd.DataFrame(yes_dict)
         full_frame = pd.concat([full_frame, new_frame])
 
     return full_frame
