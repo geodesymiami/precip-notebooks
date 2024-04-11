@@ -18,7 +18,7 @@ import sys
 elninos = {'weak nina': [[2000.4164, 2001.1233], [2005.8712, 2006.2], [2007.5342, 2008.4548], [2008.874, 2009.2], [2010.4521, 2011.3671], [2011.6192, 2012.2027], [2016.6219, 2016.9562], [2017.7863, 2018.2849], [2020.6219, 2021.2849], [2021.7041, 2023.0384]], 'moderate nina': [[2007.7041, 2008.2877], [2010.5342, 2011.1233], [2011.7863, 2011.9534], [2020.789, 2021.0384]], 'strong nina': [[2007.8712, 2008.1233], [2010.7041, 2010.9534]], 'weak nino': [[2002.4521, 2003.1233], [2004.6219, 2005.1233], [2006.7041, 2007.0384], [2009.6192, 2010.2], [2015.2, 2016.2877], [2018.7863, 2019.3671], [2023.4521, 2024.0384]], 'moderate nino': [[2002.7041, 2002.9534], [2009.7863, 2010.1233], [2015.4521, 2016.2027], [2023.5342, 2024.0384]], 'strong nino': [[2015.5342, 2016.2027]], 'very strong nino': [[2015.7041, 2016.1233]]} 
 
 # Plot average rain for each day of the year
-def average_daily(lon, lat, filename1, roll_count):
+def average_daily(lon, lat, start_date, end_date, folder, roll_count=1):
     """ Line plot of the average rolling values by day of the year.
 
     Args:
@@ -29,11 +29,7 @@ def average_daily(lon, lat, filename1, roll_count):
     Return:
     """
     
-    lon = float(lon)
-    lat = float(lat)
-    roll_count = int(roll_count)
-    data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    rain = pd.read_csv(data_path1)
+    rain = create_map(lat, lon, [start_date, end_date], folder)
     rainfall = volcano_rain_frame(rain, roll_count, lon, lat)
     rainfall['MonthDay'] = rainfall['Decimal'].apply(lambda x: (x) % 1)
     days = np.unique(np.array(rainfall['MonthDay']))
@@ -53,7 +49,7 @@ def average_daily(lon, lat, filename1, roll_count):
     return
    
 # Creates histograms that break up eruption data based on quantile of rainfall.
-def by_strength(lon, lat, filename1, color_count, roll_count, filename2, log):
+def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, filename=None, log=True):
     """ Plots the sorted rolling rain values and adds color based on quantile breakdown. Further, it plots the eruption data on top of this plot.
 
     Args:
@@ -67,15 +63,14 @@ def by_strength(lon, lat, filename1, color_count, roll_count, filename2, log):
     Return:
     """
 
-    lon = float(lon)
-    lat = float(lat)
-    color_count = int(color_count)
-    roll_count = int(roll_count)
-    # rainfall = create_map(lat, lon, date_list, folder)
-    data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    rainfall = pd.read_csv(data_path1)
-    data_path2 = os.path.join('GALAPAGOS_DATA', filename2)
-    eruptions = pd.read_csv(data_path2)
+    rainfall = create_map(lat, lon, [start_date, end_date], folder)
+
+    if filename is not None:
+        data_path = os.path.join('GALAPAGOS_DATA', filename)
+        eruptions = pd.read_csv(data_path)
+    else:
+        eruptions = pd.DataFrame()
+
     plt.figure(figsize=(10, 5))
 
     colors = color_scheme(color_count)
@@ -114,7 +109,7 @@ def by_strength(lon, lat, filename1, color_count, roll_count, filename2, log):
             plt.title(str((lon, lat)) + ' (' + str(start) + '-' + str(end-1) + ')')
             plt.xlabel('Day index when sorted by ' + str(roll_count) + ' day precipitation')
             plt.ylabel(str(roll_count) + ' day precipitation (mm)')
-            if log == 'T':
+            if log == True:
                 plt.yscale('log')
     else:
         plt.bar(range(len(date_rain)), date_rain, color=colors[0], width=1)  
@@ -137,7 +132,7 @@ def by_strength(lon, lat, filename1, color_count, roll_count, filename2, log):
     return 
 
 # Creates plot that break up eruption data based on quantile of rainfall.
-def grid_search(volcanos, filename1, filename2, quant_range, roll_range, grid):
+def grid_search(volcanos, start_date, end_date, folder, filename, quant_range=[20,30,40,50], roll_range=[30,60,90,120], grid='event count'):
     """ Creates a grid of values (based on the 'grid' input) for various choice of upper percentile and choice of rolling number.
 
     Args:
@@ -152,13 +147,18 @@ def grid_search(volcanos, filename1, filename2, quant_range, roll_range, grid):
         data: The array of values that is plotted in the grid.
 
     """
-    ### Need to handle the string input for volcanos, quant_range, and roll_range
-    data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    rainfall = pd.read_csv(data_path1)
-    data_path2 = os.path.join('GALAPAGOS_DATA', filename2)
-    eruptions = pd.read_csv(data_path2)
+
+    if filename is not None:
+        data_path = os.path.join('GALAPAGOS_DATA', filename)
+        eruptions = pd.read_csv(data_path)
+    else:
+        print('An eruption file must be given.')
     
     data = np.zeros((len(quant_range), len(roll_range)))
+
+    rains = {}
+    for pick in volcanos:
+        rains[pick] = create_map(volcanos[pick][1], volcanos[pick][0], [start_date, end_date], folder)
 
     for quant in range(len(quant_range)):
         for roll in range(len(roll_range)):
@@ -170,11 +170,11 @@ def grid_search(volcanos, filename1, filename2, quant_range, roll_range, grid):
             for pick in totals:
 
                 # Get volcano specific data and order dates by 'roll' amount
-                volc_rain = volcano_rain_frame(rainfall, roll, eruptions[pick][0], eruptions[pick][1])
+                volc_rain = volcano_rain_frame(rains[pick], roll, volcanos[pick][0], volcanos[pick][1])
                 start = int(volc_rain['Decimal'].min() // 1)
                 end = int(volc_rain['Decimal'].max() // 1)+1
 
-                erupt_dates = volcano_erupt_dates(eruptions, start, end, eruptions[pick][0], eruptions[pick][1])
+                erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
                 erupt_count += len(erupt_dates)
                     
                 dates = volc_rain.sort_values(by=['roll']).copy()
@@ -228,10 +228,10 @@ def grid_search(volcanos, filename1, filename2, quant_range, roll_range, grid):
     plt.ylabel('Upper rain period (%)')
     plt.show()
 
-    return data
+    return
 
 # Creates histograms that break up eruption data based on quantile of rainfall.
-def eruption_counter(lon, lat, filename1, color_count, roll_count, filename2, by_season=False):
+def eruption_counter(lon, lat, start_date, end_date, folder, filename=None, color_count=1, roll_count=1, by_season=False):
     """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
     separately, and also a histogram that puts all of the eruption data together.
 
@@ -247,16 +247,17 @@ def eruption_counter(lon, lat, filename1, color_count, roll_count, filename2, by
     Return:
 
     """
-    lon = float(lon)
-    lat = float(lat)
-    color_count = int(color_count)
-    roll_count = int(roll_count)
-    # rainfall = create_map(lat, lon, date_list, folder)
-    data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    rainfall = pd.read_csv(data_path1)
-    data_path2 = os.path.join('GALAPAGOS_DATA', filename2)
-    eruptions = pd.read_csv(data_path2)
+
+    rainfall = create_map(lat, lon, [start_date, end_date], folder)
+
+    if filename is not None:
+        data_path = os.path.join('GALAPAGOS_DATA', filename)
+        eruptions = pd.read_csv(data_path)
+    else:
+        eruptions = pd.DataFrame()
+
     plt.figure(figsize=(10, len(rainfall['Date'].unique())//1000))
+
     colors = color_scheme(color_count)
     quantile = quantile_name(color_count)
 
@@ -301,15 +302,10 @@ def eruption_counter(lon, lat, filename1, color_count, roll_count, filename2, by
     return
 
 # Predicts rain based on averages
-def rain_averager(lon, lat, filename1, color_count, roll_count):
+def rain_averager(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1):
     
-    lon = float(lon)
-    lat = float(lat)
-    color_count = int(color_count)
-    roll_count = int(roll_count)
-    # rainfall = create_map(lat, lon, date_list, folder)
-    data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    rainfall = pd.read_csv(data_path1)
+    rainfall = create_map(lat, lon, [start_date, end_date], folder)
+
     plt.figure(figsize=(8, 5))
 
     colors = color_scheme(color_count)
@@ -353,7 +349,7 @@ def rain_averager(lon, lat, filename1, color_count, roll_count):
     plt.show()
     return 
 
-def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_count, filename2, ninos, by_season):
+def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, filename=None, ninos=None, by_season=False):
     """ Plots rain in horizontal bars: y-axis is year, and x-axis is month.
 
     Args:
@@ -369,17 +365,15 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_cou
     Return:
     """
     global elninos
-    
-    lon = float(lon)
-    lat = float(lat)    
-    color_count = int(color_count)
-    roll_count = int(roll_count)
-    #data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    #rainfall = pd.read_csv(data_path1)
+       
     rainfall = create_map(lat, lon, [start_date, end_date], folder)
 
-    data_path2 = os.path.join('GALAPAGOS_DATA', filename2)
-    eruptions = pd.read_csv(data_path2)
+    if filename is not None:
+        data_path = os.path.join('GALAPAGOS_DATA', filename)
+        eruptions = pd.read_csv(data_path)
+    else:
+        eruptions = pd.DataFrame()
+
     fig, axes = plt.subplots(1, 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, ((len(rainfall['Date'].unique())//1200)))) # to get plot of combined data 1960-2020, take length of figsize and apply-> // 1.5)
 
     colors = color_scheme(color_count)
@@ -415,7 +409,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_cou
 
     # Plots rain by quantile, and if by_season is True, then also by year.
     for i in range(color_count):
-        if by_season == 'T':
+        if by_season == True:
             for j in range(start, end + 1):
                 dates_j = np.array([day for day in date_dec if (day // 1) == j])
                 bin_size = len(dates_j) // color_count
@@ -429,7 +423,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_cou
             ax0.scatter(x[i*bin_size:(i+1)*bin_size], y[i*bin_size:(i+1)*bin_size], color=colors[i], marker='s', s=(219000 // len(rainfall['Date'].unique())))
 
     # Plots nino/nina events
-    if ninos == 'T':
+    if ninos is not None:
         for j in elninos:
         
             if j == 'strong nino':
@@ -463,7 +457,6 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_cou
     years = [i for i in range(start, end+1)]
     for i in years:
         totals.append(volc_rain['Precipitation'][volc_rain['Decimal'] // 1 == i].sum())
-    print(volc_rain)
     ax1.set_title('Total (mm)') 
     ax1.barh(years, totals, height=.5, color='purple')
     ax1.set_yticks([start + (2*k) for k in range(((end + 1 - start) // 2))], [str(start + (2*k)) for k in range(((end + 1 - start) // 2))])
@@ -473,7 +466,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count, roll_cou
 
     return
 
-def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2, ninos, by_season, log_flag, centered, cumsum):
+def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, filename=None, ninos=None, by_season=False, log_flag=True, centered=False, cumsum=True):
     """ Plots rolling rain temporally-- y-axis is rolling rain values, and x-axis is time.
 
     Args:
@@ -494,16 +487,15 @@ def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2,
     """
 
     global elninos
-    
-    lon = float(lon)
-    lat = float(lat)
-    color_count = int(color_count)
-    roll_count = int(roll_count)
-    rainfall = create_map(lat, lon, date_list, folder)
-    #data_path1 = os.path.join('GALAPAGOS_DATA', filename1)
-    #rainfall = pd.read_csv(data_path1)
-    data_path2 = os.path.join('GALAPAGOS_DATA', filename2)
-    eruptions = pd.read_csv(data_path2)
+
+    rainfall = create_map(lat, lon, [start_date, end_date], folder)
+
+    if filename is not None:
+        data_path = os.path.join('GALAPAGOS_DATA', filename)
+        eruptions = pd.read_csv(data_path)
+    else:
+        eruptions = pd.DataFrame()
+
     fig, plot = plt.subplots(figsize=(10, 4.5))
 
     colors = color_scheme(color_count)
@@ -532,7 +524,7 @@ def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2,
     date_rain = np.array(dates['roll'])
     y_min = np.min(date_rain)
 
-    if log_flag == 'T':
+    if log_flag == True:
         date_rain = np.log(date_rain - y_min + 1)
 
     # Used in plotting to make y range similar to max bar height 
@@ -556,7 +548,7 @@ def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2,
             plot.bar(date_dec[l*(bin_size): (l+1)*bin_size], date_rain[l*(bin_size): (l+1)*bin_size], color =colors[l], width = 0.01, alpha = 1)
 
     # Plots cumulative rainfall in the same plot as the 90 day rain averages.
-    if cumsum == 'T':
+    if cumsum == True:
         legend_handles += [mpatches.Patch(color='gray', label='Cumulative precipitation')]
         plot2 = plot.twinx()
         plot2.bar(dates.Decimal, np.array(dates['cumsum']), color ='gray', width = 0.01, alpha = .05)
@@ -572,7 +564,7 @@ def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2,
     # Plots nino/nina events
     cmap = plt.cm.bwr
     selected_colors = cmap([203, 253, 3])
-    if ninos == 'T':
+    if ninos == True:
         for j in elninos:
             if j == 'strong nino' or j == 'very strong nino' or j == 'strong nina':
                 if j == 'strong nino':
@@ -601,77 +593,3 @@ def bar_plotter(lon, lat, date_list, folder, color_count, roll_count, filename2,
     plt.show()
     return
 
-if __name__ == "__main__":
-    # Get the function name from command-line argument
-    if len(sys.argv) != 2:
-        print("Usage: python helper_functions.py <function_name>")
-    else:
-        function_name = sys.argv[1]
-
-        # Check if the function exists and call it with inputs
-        if function_name == 'annual_plotter':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for date min: ")
-            arg4 = input("Enter value for date max: ")
-            arg5 = input("Enter value for data folder: ")
-            arg6 = input("Enter value for color_count: ")
-            arg7 = input("Enter value for roll_count: ")
-            arg8 = input("Enter value for eruptions file: ")
-            arg9 = input("Enter value for ninos (T/F): ")
-            arg10 = input("Enter value for by_season (T/F): ")
-            annual_plotter(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
-        elif function_name == 'bar_plotter':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for rain file: ")
-            arg4 = input("Enter value for color_count: ")
-            arg5 = input("Enter value for roll_count: ")
-            arg6 = input("Enter value for eruptions file: ")
-            arg7 = input("Enter value for ninos (T/F): ")
-            arg8 = input("Enter value for by_season (T/F): ")
-            arg9 = input("Enter value for log_flag (T/F): ")
-            arg10 = input("Enter value for centered (T/F): ")
-            arg11 = input("Enter value for cumsum (T/F): ")
-            bar_plotter(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
-        elif function_name == 'rain_averager':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for rain file: ")
-            arg4 = input("Enter value for color_count: ")
-            arg5 = input("Enter value for roll_count: ")
-            rain_averager(arg1, arg2, arg3, arg4, arg5)
-        elif function_name == 'eruption_counter':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for rain file: ")
-            arg4 = input("Enter value for color_count: ")
-            arg5 = input("Enter value for roll_count: ")
-            arg6 = input("Enter value for eruptions file: ")
-            arg7 = input("Enter value for by_season (T/F): ")
-            eruption_counter(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-        elif function_name == 'grid_search':
-            arg1 = input("Enter dictionary for volcanos ('volcano': (lon, lat)): ")
-            arg2 = input("Enter value for rain file: ")
-            arg3 = input("Enter value for eruptions file: ")
-            arg4 = input("Enter value for quant_range (list): ")
-            arg5 = input("Enter value for roll_range (list): ")
-            arg6 = input("Enter value for grid type (event count, scale factor, p value): ")
-            grid_search(arg1, arg2, arg3, arg4, arg5, arg6)
-        elif function_name == 'by_strength':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for rain file: ")
-            arg4 = input("Enter value for color_count: ")
-            arg5 = input("Enter value for roll_count: ")
-            arg6 = input("Enter value for eruptions file: ")
-            arg7 = input("Enter value for log_flag (T/F): ")
-            by_strength(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-        elif function_name == 'average_daily':
-            arg1 = input("Enter value for lon (round to nearest .05): ")
-            arg2 = input("Enter value for lat (round to nearest .05): ")
-            arg3 = input("Enter value for rain file: ")
-            arg4 = input("Enter value for roll_count: ")
-            average_daily(arg1, arg2, arg3, arg4)
-        else:
-            print("Function not found.")

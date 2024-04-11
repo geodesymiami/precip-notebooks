@@ -502,7 +502,7 @@ def date_to_decimal_year(date_str):
     return decimal_year
 
 # Picks out volcano specific rain and adds decimal column, rolling column, and cumsum column
-def volcano_rain_frame(rainfall, roll_count, lon=None, lat=None, centered=False, cumsum='T'):
+def volcano_rain_frame(rainfall, roll_count, lon=None, lat=None, centered=False, cumsum=True):
     """ Uses lat/lon, date, and rainfall amount to create a new dataframe that includes site specific decimal dates, rolling average rain, and cumulative rain.
 
     Args:
@@ -540,7 +540,7 @@ def volcano_rain_frame(rainfall, roll_count, lon=None, lat=None, centered=False,
             volc_rain['roll'] = volc_rain.Precipitation.rolling(roll_count).sum()
     volc_rain = volc_rain.dropna(subset=['roll'])
     if 'Precipitation' in volc_rain.columns:
-        if cumsum == 'T':
+        if cumsum == True:
             volc_rain['cumsum'] = volc_rain.Precipitation.cumsum()
     return volc_rain
 
@@ -559,17 +559,19 @@ def volcano_erupt_dates(eruptions, period_start, period_end, lon='NaN', lat='NaN
 
     """  
     global volcanos
-
-    if lon == 'NaN':
-        volc_erupts = eruptions.copy()
-    elif (lon, lat) in volcanos:
-        volc_erupts = eruptions[eruptions['Volcano'] == volcanos[(lon, lat)]].copy()
-    else:
-        print('There is no volcano associated with these coordinates.')
+    if eruptions.empty:
         return []
-    volc_erupts['Decimal'] = volc_erupts.Start.apply(date_to_decimal_year)
-    erupt_dates = np.array(volc_erupts['Decimal'][(volc_erupts['Decimal'] >= period_start) & (volc_erupts['Decimal'] <= period_end)])
-    return erupt_dates
+    else:
+        if lon == 'NaN':
+            volc_erupts = eruptions.copy()
+        elif (lon, lat) in volcanos:
+            volc_erupts = eruptions[eruptions['Volcano'] == volcanos[(lon, lat)]].copy()
+        else:
+            print('There is no volcano associated with these coordinates.')
+            return []
+        volc_erupts['Decimal'] = volc_erupts.Start.apply(date_to_decimal_year)
+        erupt_dates = np.array(volc_erupts['Decimal'][(volc_erupts['Decimal'] >= period_start) & (volc_erupts['Decimal'] <= period_end)])
+        return erupt_dates
 
 ### STILL UNDER CONSTRUCTION ###
 # Performs a cox regression for a chosen volcano
