@@ -12,10 +12,46 @@ import re
 import os
 from matplotlib import cm
 import math
+import csv
+import json
+
 
 volcanos = {(-91.35, .05):'Wolf', (-91.55, -.35):'Fernandina', (-91.15, -.85):'Negra, Sierra', (-91.35, -.95): 'Azul, Cerro'} # Long/lat pairs must exist in rainfall data
 
+def extract_volcanoes(folder, volcanoName):
+
+    column_names = ['Volcano', 'Start', 'End', 'Max Explosivity']
+
+    f = open(folder + '/' + 'volcanoes.json')
+    data = json.load(f)
+    frame_data = []
+    for j in data['features']:
+        if j['properties']['VolcanoName'] in volcanoName:
+            name = j['properties']['VolcanoName']
+            start = datetime.strptime((j['properties']['StartDate']), '%Y%m%d').date().strftime("%Y-%m-%d")
+            print(type(start))
+            try:
+                end = datetime.strptime((j['properties']['EndDate']), '%Y%m%d').date().strftime("%Y-%m-%d")
+            except:
+                end = 'None'
+            strength = j['properties']['ExplosivityIndexMax']
+            frame_data.append([name, start, end, strength])
+
+    df = pd.DataFrame(frame_data, columns=column_names)
+    return df
+
 def data_expand(rainfall, coords):
+    """
+    Takes rain from a single location and creates a dataframe with this rain applied at a list of lon/lat pairs.
+
+    Args: 
+        rainfall: Dataframe with columns 'Date', and 'Precipitation'
+        coords: A list of lon/lat pairs
+
+    Return:
+        expanded_rain: A Dataframe with columns 'Date', 'Longitude', 'Latitude', and 'Precipitation'
+
+    """
 
     expanded_rain = pd.DataFrame()
 
@@ -27,6 +63,16 @@ def data_expand(rainfall, coords):
     return expanded_rain
 
 def quantile_name(color_count):
+    """
+    Simple function used for labelling when plotting.
+
+    Args: 
+        color_count: Number of quantiles
+
+    Return:
+        quantile: string used in plot labelling
+
+    """
 
     if color_count == 2:
         quantile = 'half '
@@ -40,6 +86,16 @@ def quantile_name(color_count):
     return quantile
 
 def color_scheme(color_count):
+    """
+    Creates a list of colors to use when plotting.
+
+    Args: 
+        color_count: Number of quantiles
+
+    Return:
+        colors: List of colors
+
+    """
 
     plasma_colormap = cm.get_cmap('viridis', 256)
     if color_count > 1:
@@ -54,6 +110,8 @@ def color_scheme(color_count):
         colors = [plasma_colormap(210)]
 
     return colors
+
+### Functions from Giacomo (next three functions) ###
 
 def generate_coordinate_array(longitude=[-179.95], latitude=[-89.95]):
     """
@@ -154,52 +212,10 @@ def create_map(latitude, longitude, date_list, folder): #parallel
 
     return finaldf
 
+### End of Giacomo functions ###
 
-# Creates a table of rain leading up to eruptions.
-def rain_table(volcanos, eruptions, rainfall, roll_range, start=None, end=None, by_season=False, recur=False):
-    """ 
-
-    Args:
-        volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
-        eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
-        rainfall: Satellite rain dataframe for volcanos in chosen region. 
-        quant_range: List of quantiles to break rain data into.
-        roll_range: List of days to average rain over.
-        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
-
-    Return:
-
-    """
-    full_frame = pd.DataFrame()
-    
-    for pick in volcanos:
-
-        if start == None:
-            start = int(rainfall['Date'].min()[0:4]) // 1
-        if end == None:
-            end = int(rainfall['Date'].max()[0:4]) // 1
-
-        erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
-
-        new_frame = pd.DataFrame({'Volcano': [pick for i in range(len(erupt_dates))], 'Date': erupt_dates})
-        for roll in range(len(roll_range)):
-
-            vals = []
-            # Get volcano specific data and order dates by 'roll' amount
-            volc_rain = volcano_rain_frame(rainfall, roll, volcanos[pick][0], volcanos[pick][1])
-
-            for k in erupt_dates:
-                vals.append(volc_rain.loc[volc_rain['Decimal'] == k, 'roll'].iloc[0])
-            
-            new_frame[str(roll_range[roll])] = vals
-        full_frame = pd.concat([full_frame, new_frame])
-
-    return full_frame
-
-# Creates a table of eruptions by percentage.
-def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range, start=None, end=None, by_season=False, recur=False):
-    """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
-    separately, and also a histogram that puts all of the eruption data together.
+def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range):
+    """ Creates a dataframe that keeps track for each volcano of which eruptions fall in wet period based on various quantile breakdowns and rolling numbers.
 
     Args:
         volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
@@ -207,19 +223,17 @@ def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range, start=Non
         rainfall: Satellite rain dataframe for volcanos in chosen region. 
         quant_range: List of quantiles to break rain data into.
         roll_range: List of days to average rain over.
-        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
 
     Return:
+        full_frame: The dataframe of wet period data, where 1's mean yes and 0's mean no.
 
     """
     full_frame = pd.DataFrame()
     
     for pick in volcanos:
 
-        if start == None:
-            start = int(rainfall['Date'].min()[0:4]) // 1
-        if end == None:
-            end = int(rainfall['Date'].max()[0:4]) // 1
+        start = int(rainfall['Date'].min()[0:4]) // 1
+        end = int(rainfall['Date'].max()[0:4]) // 1
 
         erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
 
@@ -251,20 +265,20 @@ def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range, start=Non
 
     return full_frame
 
-# Creates histograms that break up eruption data based on quantile of rainfall.
 def mix_counter(volcanos, eruptions, rainfall, roll_count, recur=False):
-    """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
-    separately, and also a histogram that puts all of the eruption data together.
+    """ Looks at eruptions, using a wet period that blends seasonal and global effects.
 
     Args:
         volcanos: A dictionary of sites (eg. sites_dict = {'Wolf': (-91.35, .05, 'Wolf'), 'Fernandina': (-91.45, -.45, 'Fernandina')}).
         eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
         rainfall: Satellite rain dataframe for volcanos in chosen region. 
-        color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
-        by_season: Boolean for if quantiles should be made for every year separately, or across the entire date range at once.
+        recur: True means that we remove 9 months of rain data after each eruption (from the respective volcano's data)
 
     Return:
+        totals: Dictionary of counts of wet period eruptions, by volcano
+        erupt_vals: Dictionary of dates for the associated eruptions
+        rain_tots: ((I don't remember...))
 
     """
 
@@ -321,12 +335,22 @@ def mix_counter(volcanos, eruptions, rainfall, roll_count, recur=False):
 
     return totals, erupt_vals, rain_tots
 
-# Computes the recurrence times for volcanoes
-def recurrences(volcanic_events, sites_dict, duration=.75):
+def recurrences(volcanic_events, sites_list, duration=.75):
+    ### This function is not actually doing anything... I need to go to everywhere that it is used and fix this.
+    """ Computes the recurrence times for volcanoes.
+    
+    Args:
+        volcanic_events: Dataframe of eruptions. Has columns 'Start', and 'Volcano'
+        sites_list: List of volcanoes of interest (from the volcanic_events dataframe) 
+        duration: Length of time after eruption to ignore rain (default is 9 months)
+
+    Return:
+        recurrences: 
+    """
     eruptions = volcanic_events.copy()
     eruptions['Decimal'] = eruptions.Start.apply(date_to_decimal_year)
     recurrences = {}
-    for i in sites_dict:
+    for i in sites_list:
 
         erupt_dates = list(eruptions['Decimal'][eruptions['Volcano'] == i])
         recurrences[i] = duration
