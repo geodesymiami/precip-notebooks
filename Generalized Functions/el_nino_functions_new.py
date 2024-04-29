@@ -10,7 +10,6 @@ import os
 import sys
 
 oni = pd.read_csv(os.path.join('/Users/jonathanquartin/Documents/Coding/GitHub/precip-notebooks/GALAPAGOS_DATA', "oni_2024.csv"))
-eruptions = pd.read_csv(os.path.join('/Users/jonathanquartin/Documents/Coding/GitHub/precip-notebooks/GALAPAGOS_DATA', "erupt_2024.csv"))
 
 def nino_by_strength(lon, lat, start_date, end_date, folder, roll_count=1):
     """ Sorts days by rain value (smallest to largest) and generates a histogram of where elnino days fall.
