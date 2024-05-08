@@ -206,7 +206,7 @@ def by_strength_all(volcanos, eruptions, rainfall1, rainfall2, rainfall3, color_
             else:
                 all = False
 
-            erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+            erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
 
             # Get volcano specific data and order dates by 'roll' amount
             dates = volc_rain.sort_values(by=['roll']).copy()
@@ -319,7 +319,7 @@ def by_strength(volcanos, eruptions, rainfall, color_count, roll_count, log=True
         start = int(volc_init['Decimal'].min() // 1)
         end = int((volc_init['Decimal'].max() // 1)+1)
 
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
         if recur == True:
             volc_rain = volc_init.copy()
             for i in range(len(erupt_dates)):
@@ -434,7 +434,7 @@ def cutoff_grid(volcanos, eruptions, rainfall, quant_range, roll_range, by_seaso
                 start = int(volc_rain['Decimal'].min() // 1)
                 end = int(volc_rain['Decimal'].max() // 1) + 1
 
-                erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+                erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
                 erupt_count += len(erupt_dates)
 
                     
@@ -499,7 +499,7 @@ def p_values(volcanos, eruptions, rainfall, quant_range, roll_range, by_season=F
                 start = int(volc_rain['Decimal'].min() // 1)
                 end = int(volc_rain['Decimal'].max() // 1) + 1
 
-                erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+                erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
                 erupt_count += len(erupt_dates)
 
                     
@@ -581,7 +581,7 @@ def grid_search(volcanos, eruptions, rainfall, quant_range, roll_range, by_seaso
                 start = int(volc_rain['Decimal'].min() // 1)
                 end = int(volc_rain['Decimal'].max() // 1)+1
 
-                erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+                erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
                 erupt_count += len(erupt_dates)
                     
                 dates = volc_rain.sort_values(by=['roll']).copy()
@@ -661,7 +661,7 @@ def eruption_counter(volcanos, eruptions, rainfall, color_count, roll_count, by_
         start = int(volc_init['Decimal'].min() // 1)
         end = int((volc_init['Decimal'].max() // 1)+1)
 
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
         print(start, end)
         print(erupt_dates)
         if recur == True:
@@ -760,7 +760,7 @@ def rain_averager(rainfall, volcanos, eruptions, color_count, roll_count):
         end = 1965
 
         # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
         erupt_no_year = erupt_dates % 1
 
         volc_init['MonthDay'] = volc_init['Decimal'].apply(lambda x: (x) % 1)
@@ -879,7 +879,7 @@ def annual_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_se
         end = int((volc_init['Decimal'].max() // 1) + 1)
 
         # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
 
         # If recur == True, it removes data from within a certain period after each eruption to account for recurrence times.
         if recur == True:
@@ -1048,7 +1048,7 @@ def bar_plotter(volcanos, rainfall, color_count, roll_count, eruptions, by_seaso
         end = int((volc_init['Decimal'].max() // 1)+1)
 
         # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
 
         # If recur == True, it removes data from within a certain period after each eruption to account for recurrence times.
         if recur == True:

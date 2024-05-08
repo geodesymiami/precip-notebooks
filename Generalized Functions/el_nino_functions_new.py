@@ -9,8 +9,6 @@ import statsmodels.api as sm
 import os
 import sys
 
-oni = pd.read_csv(os.path.join('/Users/jonathanquartin/Documents/Coding/GitHub/precip-notebooks/GALAPAGOS_DATA', "oni_2024.csv"))
-
 def nino_by_strength(lon, lat, start_date, end_date, folder, roll_count=1):
     """ Sorts days by rain value (smallest to largest) and generates a histogram of where elnino days fall.
 
@@ -25,7 +23,7 @@ def nino_by_strength(lon, lat, start_date, end_date, folder, roll_count=1):
     Return:
     """
 
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     rainfall = create_map(lat, lon, [start_date, end_date], folder)
 
@@ -74,7 +72,7 @@ def oni_type_precip(lon, lat, start_date, end_date, folder, roll_count=1):
     Return:
     """
 
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     rainfall = create_map(lat, lon, [start_date, end_date], folder)
     start = int(start_date[0:4])
@@ -131,7 +129,7 @@ def nino_scatter(lon, lat, start_date, end_date, folder, roll_count=1):
     Return:
     """
 
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     rainfall = create_map(lat, lon, [start_date, end_date], folder)
 
@@ -171,7 +169,7 @@ def nino_distribution(lon, lat, start_date, end_date, folder, roll_count=1, cuto
 
     Return:
     """
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     rainfall = create_map(lat, lon, [start_date, end_date], folder)
 
@@ -333,7 +331,7 @@ def nino_dict(oni, rainfall):
     return elninos
 
 # Strength finder
-def elnino_strengths(val, strength, cutoff):
+def elnino_strengths(val, strength, cutoff, folder):
     """ Determines the date ranges for El Nino or La Nina events of a specified strength.
 
     Typical classification of nino/nina events:
@@ -343,6 +341,7 @@ def elnino_strengths(val, strength, cutoff):
         val: Chosen cutoff sea surface temp for an El Nino event (eg. > 0.5 signifies all El Nino events).
         strength: Intensity of the event type considered (eg. for > 2, strength would be the string "very strong el nino")
         cutoff: Typically 0.5 or -0.5 indicating being within any type of Nino or Nina event.
+        folder: Location where the rain data is stored
 
     Return:
         period: A one key dictionary with key given by the strength, and value given by a list of pairs [start, end],
@@ -350,7 +349,7 @@ def elnino_strengths(val, strength, cutoff):
 
     """
 
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     # Add a new column to ONI data for the 15th of the middle month. eg. For 'DJF' of 2000, the new column entry is '2000-01-15'
     date_converter = {'DJF': '01', 'JFM': '02', 'FMA': '03', 'MAM': '04', 'AMJ': '05', 'MJJ': '06', 'JJA': '07', 'JAS': '08', 'ASO': '09', 'SON': '10', 'OND': '11', 'NDJ': '12'}
@@ -414,17 +413,19 @@ def elnino_strengths(val, strength, cutoff):
 
 
 # El nino day value
-def elnino_cleaner():
+def elnino_cleaner(folder):
     """ Creates a copy of the ONI dataframe and adds columns associated to the start, center, and end of a period.
 
     Args:
+        folder: Location where the rain data is stored
+
 
     Return:
         orig: The new dataframe
 
     """
     
-    global oni
+    oni = pd.read_csv(os.path.join(folder, "oni_2024.csv"))
 
     # Add a new column for the first day of each month in a string. (eg. for 'DJF' add a column for the 1st day of Dec, Jan, and Feb)
     date_converter = {'DJF': ('12', '03', '01'), 'JFM': ('01', '04', '02'), 'FMA': ('02', '05', '03'), 'MAM': ('03', '06', '04'), 'AMJ': ('04', '07', '05'), 'MJJ': ('05', '08', '06'), 'JJA': ('06', '09', '07'), 'JAS': ('07', '10', '08'), 'ASO': ('08', '11', '09'), 'SON': ('09', '12', '10'), 'OND': ('10', '01', '11'), 'NDJ': ('11', '02', '12')}

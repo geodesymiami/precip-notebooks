@@ -15,9 +15,6 @@ import math
 import csv
 import json
 
-
-volcanos = {(-91.35, .05):'Wolf', (-91.55, -.35):'Fernandina', (-91.15, -.85):'Negra, Sierra', (-91.35, -.95): 'Azul, Cerro'} # Long/lat pairs must exist in rainfall data
-
 def extract_volcanoes(folder, volcanoName):
 
     column_names = ['Volcano', 'Start', 'End', 'Max Explosivity']
@@ -29,7 +26,6 @@ def extract_volcanoes(folder, volcanoName):
         if j['properties']['VolcanoName'] in volcanoName:
             name = j['properties']['VolcanoName']
             start = datetime.strptime((j['properties']['StartDate']), '%Y%m%d').date().strftime("%Y-%m-%d")
-            print(type(start))
             try:
                 end = datetime.strptime((j['properties']['EndDate']), '%Y%m%d').date().strftime("%Y-%m-%d")
             except:
@@ -235,7 +231,7 @@ def grid_table(volcanos, eruptions, rainfall, quant_range, roll_range):
         start = int(rainfall['Date'].min()[0:4]) // 1
         end = int(rainfall['Date'].max()[0:4]) // 1
 
-        erupt_dates = volcano_erupt_dates(eruptions, pick, start, end)
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
 
         yes_dict = {'Volcano': [pick for i in range(len(erupt_dates))], 'Date': erupt_dates}
         for quant in range(len(quant_range)):
@@ -296,7 +292,7 @@ def mix_counter(volcanos, eruptions, rainfall, roll_count, recur=False):
         start = int(volc_init['Decimal'].min() // 1)
         end = int(volc_init['Decimal'].max() // 1)
 
-        erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+        erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
         if recur == True:
             volc_rain = volc_init.copy()
             for i in range(len(erupt_dates)):
@@ -569,12 +565,11 @@ def volcano_rain_frame(rainfall, roll_count, lon=None, lat=None, centered=False,
     return volc_rain
 
 # Picks out all eruptions of a specific volcano within a certain date range.
-def volcano_erupt_dates(eruptions, period_start, period_end, lon='NaN', lat='NaN'):
+def volcano_erupt_dates(eruptions, period_start, period_end):
     """ Picks out all eruptions of a specific volcano within a certain date range.
 
     Args:
         eruptions: A dataframe with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
-        pick: volcano or site at which to collect data.  
         period_start: Beginning of date range.
         period_end: End of date range.
 
@@ -582,17 +577,11 @@ def volcano_erupt_dates(eruptions, period_start, period_end, lon='NaN', lat='NaN
         erupt_dates: Array of decimal dates for eruptions.
 
     """  
-    global volcanos
+
     if eruptions.empty:
         return []
     else:
-        if lon == 'NaN':
-            volc_erupts = eruptions.copy()
-        elif (lon, lat) in volcanos:
-            volc_erupts = eruptions[eruptions['Volcano'] == volcanos[(lon, lat)]].copy()
-        else:
-            print('There is no volcano associated with these coordinates.')
-            return []
+        volc_erupts = eruptions.copy()
         volc_erupts['Decimal'] = volc_erupts.Start.apply(date_to_decimal_year)
         erupt_dates = np.array(volc_erupts['Decimal'][(volc_erupts['Decimal'] >= period_start) & (volc_erupts['Decimal'] <= period_end)])
         return erupt_dates

@@ -7,7 +7,6 @@ import math
 import seaborn as sns
 from matplotlib.lines import Line2D
 from helper_functions import volcano_rain_frame, volcano_erupt_dates, date_to_decimal_year, recurrences, create_map, color_scheme, quantile_name, extract_volcanoes
-from el_nino_functions import non_nino_eruptions, nino_dict
 import geopandas as gpd
 from shapely.geometry import box
 from shapely.geometry import box, Polygon, MultiPolygon
@@ -95,7 +94,7 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1)+1)
 
-    erupt_dates = volcano_erupt_dates(eruptions, start, end, lon, lat)
+    erupt_dates = volcano_erupt_dates(eruptions, start, end)
 
     # Get volcano specific data and order dates by 'roll' amount
     dates = volc_rain.sort_values(by=['roll']).copy()
@@ -178,7 +177,7 @@ def grid_search(volcanos, start_date, end_date, folder, volcano, quant_range=[20
                 start = int(volc_rain['Decimal'].min() // 1)
                 end = int(volc_rain['Decimal'].max() // 1)+1
 
-                erupt_dates = volcano_erupt_dates(eruptions, start, end, volcanos[pick][0], volcanos[pick][1])
+                erupt_dates = volcano_erupt_dates(eruptions[eruptions['Volcano'] == pick], start, end)
                 erupt_count += len(erupt_dates)
                     
                 dates = volc_rain.sort_values(by=['roll']).copy()
@@ -275,7 +274,7 @@ def eruption_counter(lon, lat, start_date, end_date, folder, volcano=None, color
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1)+1)
 
-    erupt_dates = volcano_erupt_dates(eruptions, start, end, lon, lat)
+    erupt_dates = volcano_erupt_dates(eruptions, start, end)
         
     dates = volc_rain.sort_values(by=['roll']).copy()
     dates = dates.dropna()
@@ -414,7 +413,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_c
     end = int((volc_rain['Decimal'].max() // 1) + 1)
 
     # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
-    erupt_dates = volcano_erupt_dates(eruptions, start, end, lon, lat)
+    erupt_dates = volcano_erupt_dates(eruptions, start, end)
 
     dates = volc_rain.sort_values(by=['roll'])
     date_dec = np.array(dates['Decimal'])
@@ -538,7 +537,7 @@ def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     end = int((volc_rain['Decimal'].max() // 1)+1)
 
     # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
-    erupt_dates = volcano_erupt_dates(eruptions, start, end, lon, lat)
+    erupt_dates = volcano_erupt_dates(eruptions, start, end)
 
     dates = volc_rain.sort_values(by=['roll'])
     date_dec = np.array(dates['Decimal'])
