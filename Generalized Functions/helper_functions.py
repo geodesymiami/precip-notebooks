@@ -188,13 +188,9 @@ def create_map(latitude, longitude, date_list, folder): #parallel
     # Filter out None results and update the dictionary
     for result in results:
         if result is not None:
-            dictionary[result[0]] = result[1]
-    try:
-        data = np.array([[i, round(longitude[0] + (.1 * j),2), round(latitude[0] + (.1 * k),2), float(dictionary[i][0][j][k])] for i in list(dictionary.keys()) for j in range(int((round(longitude[1] - longitude[0],1)) // .1)+1) for k in range(int((round(latitude[1] - latitude[0],1)) // .1)+1)])
+            dictionary[result[0]] = float(result[1][0])
 
-    except:
-        data = np.array([[i, longitude, latitude, float(dictionary[i][0])] for i in list(dictionary.keys())])
-    df1 = pd.DataFrame(data, columns=['Date', 'Longitude', 'Latitude', 'Precipitation'])
+    df1 = pd.DataFrame(dictionary.items(), columns=['Date', 'Precipitation'])
     finaldf = pd.concat([finaldf, df1], ignore_index=True, sort=False)
 
     finaldf.sort_index()
@@ -202,11 +198,56 @@ def create_map(latitude, longitude, date_list, folder): #parallel
 
     finaldf = finaldf.sort_values(by='Date', ascending=True)
 
-    finaldf['Longitude'] = finaldf['Longitude'].astype(float)
-    finaldf['Latitude'] = finaldf['Latitude'].astype(float)
-    finaldf['Precipitation'] = finaldf['Precipitation'].astype(float)
-
     return finaldf
+
+# def create_map(latitude, longitude, date_list, folder): #parallel
+#     """
+#     Creates a map of precipitation data for a given latitude, longitude, and date range.
+
+#     Parameters:
+#     latitude (list): A list containing the minimum and maximum latitude values.
+#     longitude (list): A list containing the minimum and maximum longitude values.
+#     date_list (list): A list of dates to include in the map.
+#     folder (str): The path to the folder containing the data files.
+
+#     Returns:
+#     pandas.DataFrame: A DataFrame containing the precipitation data for the specified location and dates to be plotted.
+#     """
+#     finaldf = pd.DataFrame()
+#     dictionary = {}
+
+#     lon, lat = generate_coordinate_array()
+
+#     # Get a list of all .nc4 files in the data folder
+#     files = [folder + '/' + f for f in os.listdir(folder) if f.startswith('2')]
+
+#     # Create a thread pool and process the files in parallel
+#     with concurrent.futures.ThreadPoolExecutor() as executor:
+#         results = executor.map(process_file, files, [date_list]*len(files), [lon]*len(files), [lat]*len(files), [longitude]*len(files), [latitude]*len(files))
+
+#     # results = process_file(files, date_list, lon, lat, longitude, latitude)
+#     # Filter out None results and update the dictionary
+#     for result in results:
+#         if result is not None:
+#             dictionary[result[0]] = result[1]
+#     try:
+#         data = np.array([[i, round(longitude[0] + (.1 * j),2), round(latitude[0] + (.1 * k),2), float(dictionary[i][0][j][k])] for i in list(dictionary.keys()) for j in range(int((round(longitude[1] - longitude[0],1)) // .1)+1) for k in range(int((round(latitude[1] - latitude[0],1)) // .1)+1)])
+
+#     except:
+#         data = np.array([[i, longitude, latitude, float(dictionary[i][0])] for i in list(dictionary.keys())])
+#     df1 = pd.DataFrame(data, columns=['Date', 'Longitude', 'Latitude', 'Precipitation'])
+#     finaldf = pd.concat([finaldf, df1], ignore_index=True, sort=False)
+
+#     finaldf.sort_index()
+#     finaldf.sort_index(ascending=False)
+
+#     finaldf = finaldf.sort_values(by='Date', ascending=True)
+
+#     finaldf['Longitude'] = finaldf['Longitude'].astype(float)
+#     finaldf['Latitude'] = finaldf['Latitude'].astype(float)
+#     finaldf['Precipitation'] = finaldf['Precipitation'].astype(float)
+
+#     return finaldf
 
 ### End of Giacomo functions ###
 

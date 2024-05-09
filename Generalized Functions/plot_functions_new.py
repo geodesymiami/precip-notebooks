@@ -32,7 +32,7 @@ def average_daily(lon, lat, start_date, end_date, folder, roll_count=1):
     """
     
     rain = create_map(lat, lon, [start_date, end_date], folder)
-    rainfall = volcano_rain_frame(rain, roll_count, lon, lat)
+    rainfall = volcano_rain_frame(rain, roll_count)
     rainfall['MonthDay'] = rainfall['Decimal'].apply(lambda x: (x) % 1)
     days = np.unique(np.array(rainfall['MonthDay']))
     rain = np.zeros(len(days))
@@ -90,7 +90,7 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     if len(eruptions) > 0:
         legend_handles += [Line2D([0], [0], color='black', linestyle='dashed', dashes= (3,2), label='Volcanic event', linewidth= 1)]
 
-    volc_rain = volcano_rain_frame(rainfall, roll_count, lon, lat)
+    volc_rain = volcano_rain_frame(rainfall, roll_count)
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1)+1)
 
@@ -103,6 +103,10 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     date_rain = np.array(dates['roll'])
     # Used in plotting to make y range similar to max bar height 
     y_max = np.max(date_rain)
+    if volcano is not None:
+        title = volcano
+    else:
+        title = str((lon, lat))
 
     # Counts eruptions in each quantile
     if color_count > 1:
@@ -110,14 +114,14 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
         for l in range(color_count):
             y = date_rain[l*(bin_size): (l+1)*bin_size]
             plt.bar(range(l*(bin_size), (l+1)*bin_size), y, color=colors[l], width=1.1)
-            plt.title(str((lon, lat)) + ' (' + str(start) + '-' + str(end-1) + ')')
+            plt.title(title + ' (' + str(start) + '-' + str(end-1) + ')')
             plt.xlabel('Day index when sorted by ' + str(roll_count) + ' day precipitation')
             plt.ylabel(str(roll_count) + ' day precipitation (mm)')
             if log == True:
                 plt.yscale('log')
     else:
         plt.bar(range(len(date_rain)), date_rain, color=colors[0], width=1)  
-        plt.title(str((lon, lat)))
+        plt.title(title)
         plt.xlabel('Days sorted by ' + str(roll_count) + ' day precipitation')
         plt.ylabel('Rainfall (mm)')
         if log == True:
@@ -270,7 +274,7 @@ def eruption_counter(lon, lat, start_date, end_date, folder, volcano=None, color
     categories = ['Quantile ' + str(i+1) for i in range(color_count)]
 
     # Get volcano specific data and order dates by 'roll' amount
-    volc_rain = volcano_rain_frame(rainfall, roll_count, lon, lat)
+    volc_rain = volcano_rain_frame(rainfall, roll_count)
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1)+1)
 
@@ -335,7 +339,7 @@ def rain_averager(lon, lat, start_date, end_date, folder, color_count=1, roll_co
 
     # Creates a dataframe for rainfall at a single volcano, with new columns 'Decimal', 'roll', and 'cumsum' for 
     # decimal date, rolling average, and cumulative sum respectively.
-    volc_init = volcano_rain_frame(rainfall, roll_count, lon, lat)
+    volc_init = volcano_rain_frame(rainfall, roll_count)
 
     volc_init['MonthDay'] = volc_init['Decimal'].apply(lambda x: (x) % 1)
     days = np.unique(np.array(volc_init['MonthDay']))
@@ -407,7 +411,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_c
 
     # Creates a dataframe for rainfall at a single volcano, with new columns 'Decimal', 'roll', and 'cumsum' for 
     # decimal date, rolling average, and cumulative sum respectively.
-    volc_rain = volcano_rain_frame(rainfall, roll_count, lon, lat)
+    volc_rain = volcano_rain_frame(rainfall, roll_count)
 
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1) + 1)
@@ -468,7 +472,11 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_c
     ax0.set_xticks([(1/24 + (1/12)*k) for k in range(12)], ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
     ax0.set_xlabel("Month") 
     ax0.set_ylabel("Year") 
-    ax0.set_title('Precipitation and volcanic events at ' + str((lon, lat))) 
+    if volcano is not None:
+        title = volcano
+    else:
+        title = str((lon, lat))
+    ax0.set_title('Precipitation and volcanic events at ' + title) 
     ax0.legend(handles=legend_handles, fontsize='small')
 
     # Creates a sideplot that shows total rainfall by year
@@ -531,7 +539,7 @@ def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
 
     # Creates a dataframe for rainfall at a single volcano, with new columns 'Decimal', 'roll', and 'cumsum' for 
     # decimal date, rolling average, and cumulative sum respectively.
-    volc_rain = volcano_rain_frame(rainfall, roll_count, lon, lat, centered, cumsum)
+    volc_rain = volcano_rain_frame(rainfall, roll_count, None, None, centered, cumsum)
 
     start = int(volc_rain['Decimal'].min() // 1)
     end = int((volc_rain['Decimal'].max() // 1)+1)
@@ -602,7 +610,11 @@ def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
 
     plot.set_ylabel(str(roll_count) + " day precipitation (mm)")
     plot.set_xlabel("Year")
-    plot.set_title(str((lon, lat)))
+    if volcano is not None:
+        title = volcano
+    else:
+        title = str((lon, lat))
+    plot.set_title(title)
     plot.set_yticks(ticks=[i for i in range(ticks)])
     plot.set_xticks(ticks=[start + (2*i) for i in range(((end - start) // 2) + 1)], labels=["'" + str(start + (2*i))[-2:] for i in range(((end - start) // 2) + 1)])
 
