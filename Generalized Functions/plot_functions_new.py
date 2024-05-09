@@ -17,21 +17,16 @@ import sys
 elninos = {'weak nina': [[2000.4164, 2001.1233], [2005.8712, 2006.2], [2007.5342, 2008.4548], [2008.874, 2009.2], [2010.4521, 2011.3671], [2011.6192, 2012.2027], [2016.6219, 2016.9562], [2017.7863, 2018.2849], [2020.6219, 2021.2849], [2021.7041, 2023.0384]], 'moderate nina': [[2007.7041, 2008.2877], [2010.5342, 2011.1233], [2011.7863, 2011.9534], [2020.789, 2021.0384]], 'strong nina': [[2007.8712, 2008.1233], [2010.7041, 2010.9534]], 'weak nino': [[2002.4521, 2003.1233], [2004.6219, 2005.1233], [2006.7041, 2007.0384], [2009.6192, 2010.2], [2015.2, 2016.2877], [2018.7863, 2019.3671], [2023.4521, 2024.0384]], 'moderate nino': [[2002.7041, 2002.9534], [2009.7863, 2010.1233], [2015.4521, 2016.2027], [2023.5342, 2024.0384]], 'strong nino': [[2015.5342, 2016.2027]], 'very strong nino': [[2015.7041, 2016.1233]]} 
 
 # Plot average rain for each day of the year
-def average_daily(lon, lat, start_date, end_date, folder, roll_count=1):
+def average_daily(rainfall, roll_count=1):
     """ Line plot of the average rolling values by day of the year.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         roll_count: Number of days to average rain over
         
     Return:
     """
     
-    rain = create_map(lat, lon, [start_date, end_date], folder)
     rainfall = volcano_rain_frame(rain, roll_count)
     rainfall['MonthDay'] = rainfall['Decimal'].apply(lambda x: (x) % 1)
     days = np.unique(np.array(rainfall['MonthDay']))
@@ -44,36 +39,26 @@ def average_daily(lon, lat, start_date, end_date, folder, roll_count=1):
     
     plt.xlabel('Month')
     plt.ylabel('Average Rain')
-    plt.title('Average Rain by Day of Year at ' + str((lon, lat)))
+    plt.title('Average Rain by Day of Year at ' + 'tbd')
     plt.xticks([i/12 for i in range(12)], ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
 
     plt.show()
     return
    
 # Creates histograms that break up eruption data based on quantile of rainfall.
-def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, volcano=None, log=True):
+def by_strength(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(), volcano=None, log=True):
     """ Plots the sorted rolling rain values and adds color based on quantile breakdown. Further, it plots the eruption data on top of this plot.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
+        eruptions: Pandas dataframe with columns Volcano, Start, End, Max Explosivity.
         filename: A csv with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
         log: T if you want a log scale for the rain values
 
     Return:
     """
-
-    rainfall = create_map(lat, lon, [start_date, end_date], folder)
-
-    if volcano is not None:
-        eruptions = extract_volcanoes(folder, volcano)
-    else:
-        eruptions = pd.DataFrame()
 
     plt.figure(figsize=(10, 5))
 
@@ -103,10 +88,6 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     date_rain = np.array(dates['roll'])
     # Used in plotting to make y range similar to max bar height 
     y_max = np.max(date_rain)
-    if volcano is not None:
-        title = volcano
-    else:
-        title = str((lon, lat))
 
     # Counts eruptions in each quantile
     if color_count > 1:
@@ -114,14 +95,14 @@ def by_strength(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
         for l in range(color_count):
             y = date_rain[l*(bin_size): (l+1)*bin_size]
             plt.bar(range(l*(bin_size), (l+1)*bin_size), y, color=colors[l], width=1.1)
-            plt.title(title + ' (' + str(start) + '-' + str(end-1) + ')')
+            plt.title('tbd' + ' (' + str(start) + '-' + str(end-1) + ')')
             plt.xlabel('Day index when sorted by ' + str(roll_count) + ' day precipitation')
             plt.ylabel(str(roll_count) + ' day precipitation (mm)')
             if log == True:
                 plt.yscale('log')
     else:
         plt.bar(range(len(date_rain)), date_rain, color=colors[0], width=1)  
-        plt.title(title)
+        plt.title('tbd')
         plt.xlabel('Days sorted by ' + str(roll_count) + ' day precipitation')
         plt.ylabel('Rainfall (mm)')
         if log == True:
@@ -238,31 +219,20 @@ def grid_search(volcanos, start_date, end_date, folder, volcano, quant_range=[20
     return
 
 # Creates histograms that break up eruption data based on quantile of rainfall.
-def eruption_counter(lon, lat, start_date, end_date, folder, volcano=None, color_count=1, roll_count=1, by_season=False):
+def eruption_counter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(), by_season=False):
     """ For each volcano, breaks up rain data by amount, and bins eruptions based on this. Generates histograms for each volcano
     separately, and also a histogram that puts all of the eruption data together.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
-        filename: A csv with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
+        eruptions: Pandas dataframe with columns Volcano, Start, End, Max Explosivity.
         by_season: T if quantiles should be made for every year separately.
 
     Return:
 
     """
-
-    rainfall = create_map(lat, lon, [start_date, end_date], folder)
-
-    if volcano is not None:
-        eruptions = extract_volcanoes(folder, volcano)
-    else:
-        eruptions = pd.DataFrame()
 
     plt.figure(figsize=(10, len(rainfall['Date'].unique())//1000))
 
@@ -303,29 +273,23 @@ def eruption_counter(lon, lat, start_date, end_date, folder, volcano=None, color
 
     plt.bar(categories, totals, color=colors)
     plt.ylabel('Volcanic events')
-    plt.title("Volcanic events by rain amount at " + str((lon, lat)))
+    plt.title("Volcanic events by rain amount at " + 'location tbd')
     plt.yticks([i for i in range(int(np.max(totals)) + 1)])    
     plt.show()
 
     return
 
 # Predicts rain based on averages
-def rain_averager(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1):
+def rain_averager(rainfall, color_count=1, roll_count=1):
     """ Computes average rain by day of the year across a time interval, and plots it.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
 
     Return:
     """
-    
-    rainfall = create_map(lat, lon, [start_date, end_date], folder)
 
     plt.figure(figsize=(8, 5))
 
@@ -364,38 +328,27 @@ def rain_averager(lon, lat, start_date, end_date, folder, color_count=1, roll_co
     plt.xlabel('Day')
     plt.ylabel(str(roll_count) + ' day precipitation (mm)')
     plt.xticks([(1/24 + i*(1/12)) for i in range(12)], ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-    plt.title('Average rain at ' + str((lon, lat)) + ' (' + str(int(volc_init['Decimal'].min() // 1)) + '-' + str(int(volc_init['Decimal'].max() // 1)) + ')')
+    plt.title('Average rain at ' + 'location tbd' + ' (' + str(int(volc_init['Decimal'].min() // 1)) + '-' + str(int(volc_init['Decimal'].max() // 1)) + ')')
     plt.legend(handles=legend_handles, loc='upper right', fontsize='small')
 
     # Show plot
     plt.show()
     return 
 
-def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, volcano=None, ninos=None, by_season=False):
+def annual_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(), ninos=None, by_season=False):
     """ Plots rain in horizontal bars: y-axis is year, and x-axis is month.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
-        filename: A csv with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        eruptions: Pandas dataframe with columns Volcano, Start, End, Max Explosivity.
         ninos: T if you want to include El Nino data
         by_season: T if quantiles should be made for every year separately.
 
     Return:
     """
     global elninos
-       
-    rainfall = create_map(lat, lon, [start_date, end_date], folder)
-
-    if volcano is not None:
-        eruptions = extract_volcanoes(folder, volcano)
-    else:
-        eruptions = pd.DataFrame()
 
     fig, axes = plt.subplots(1, 2, gridspec_kw={'width_ratios': [4, 1]}, figsize=(10, ((len(rainfall['Date'].unique())//1200)))) # to get plot of combined data 1960-2020, take length of figsize and apply-> // 1.5)
 
@@ -472,11 +425,7 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_c
     ax0.set_xticks([(1/24 + (1/12)*k) for k in range(12)], ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
     ax0.set_xlabel("Month") 
     ax0.set_ylabel("Year") 
-    if volcano is not None:
-        title = volcano
-    else:
-        title = str((lon, lat))
-    ax0.set_title('Precipitation and volcanic events at ' + title) 
+    ax0.set_title('Tbd') 
     ax0.legend(handles=legend_handles, fontsize='small')
 
     # Creates a sideplot that shows total rainfall by year
@@ -493,18 +442,14 @@ def annual_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_c
 
     return
 
-def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_count=1, volcano=None, ninos=None, by_season=False, log_flag=True, centered=False, cumsum=True):
+def bar_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(), ninos=None, by_season=False, log_flag=True, centered=False, cumsum=True):
     """ Plots rolling rain temporally-- y-axis is rolling rain values, and x-axis is time.
 
     Args:
-        lon: The longitude of the location of interest (rounded to the nearest .05)
-        lat: The latitude of the location of interest (rounded to the nearest .05)
-        start_date: String YYYY-MM-DD for the first date of interest
-        end_date: String YYYY-MM-DD for the last date of interest
-        folder: Location where the rain data is stored
+        rainfall: Pandas dataframe with columns Date and Precipitation.
         color_count: Number of quantiles to break rain data into.
         roll_count: Number of days to average rain over.
-        filename: A csv with columns-- 'Volcano' and 'Start'. 'Start' is the beginning date of the eruption given as a string-- YYYY-MM-DD.
+        eruptions: Pandas dataframe with columns Volcano, Start, End, Max Explosivity.
         ninos: T if you want to include El Nino data
         by_season: T if quantiles should be made for every year separately.
         log_flag: T to use a log scale for the rain data.
@@ -516,13 +461,6 @@ def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
     """
 
     global elninos
-
-    rainfall = create_map(lat, lon, [start_date, end_date], folder)
-
-    if volcano is not None:
-        eruptions = extract_volcanoes(folder, volcano)
-    else:
-        eruptions = pd.DataFrame()
 
     fig, plot = plt.subplots(figsize=(10, 4.5))
 
@@ -610,11 +548,7 @@ def bar_plotter(lon, lat, start_date, end_date, folder, color_count=1, roll_coun
 
     plot.set_ylabel(str(roll_count) + " day precipitation (mm)")
     plot.set_xlabel("Year")
-    if volcano is not None:
-        title = volcano
-    else:
-        title = str((lon, lat))
-    plot.set_title(title)
+    plot.set_title('tbd')
     plot.set_yticks(ticks=[i for i in range(ticks)])
     plot.set_xticks(ticks=[start + (2*i) for i in range(((end - start) // 2) + 1)], labels=["'" + str(start + (2*i))[-2:] for i in range(((end - start) // 2) + 1)])
 
