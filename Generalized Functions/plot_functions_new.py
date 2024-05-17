@@ -350,7 +350,7 @@ def annual_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame
     for i in range(color_count):
         if by_season == True:
             for j in range(start, end + 1):
-                rain_by_year = volc_rain[volc_rain['Decimal'] - j < 1].copy()
+                rain_by_year = volc_rain[volc_rain['Decimal'] // 1 == j].copy()
                 rain_j = rain_by_year.sort_values(by=['roll'])
                 dates_j = np.array([rain_j['Decimal']])
                 bin_size = len(dates_j) // color_count
@@ -437,7 +437,7 @@ def bar_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(),
         if by_season == True:
             # Rain data is broken into quantiles, year by year, and plotted
             for j in range(start, end + 1):
-                rain_by_year = volc_rain[volc_rain['Decimal'] - j < 1].copy()
+                rain_by_year = volc_rain[volc_rain['Decimal'] // 1 == j].copy()
                 rain_j = rain_by_year.sort_values(by=['roll'])
                 dates_j = np.array([rain_j['Decimal']])
                 daterain_j = np.array([rain_j['roll']])
