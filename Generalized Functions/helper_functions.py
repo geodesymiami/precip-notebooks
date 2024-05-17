@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+import matplotlib.patches as mpatches
 import statsmodels.api as sm
 from lifelines import CoxTimeVaryingFitter
 import concurrent.futures
@@ -14,6 +15,28 @@ from matplotlib import cm
 import math
 import csv
 import json
+
+def data_preload(rainfall, roll_count, eruptions, color_count):
+
+    # Creates a dataframe for rainfall, with new columns 'Decimal', 'roll', and 'cumsum' for 
+    # decimal date, rolling sum, and cumulative sum respectively.
+    volc_rain = volcano_rain_frame(rainfall, roll_count)
+
+    start = int(volc_rain['Decimal'].min() // 1)
+    end = int((volc_rain['Decimal'].max() // 1)+1)
+
+    # Creates a numpy array of decimal dates for eruptions between a fixed start and end date.
+    erupt_dates = volcano_erupt_dates(eruptions, start, end)   
+
+    colors = color_scheme(color_count)
+    quantile = quantile_name(color_count)
+
+    if color_count > 1:
+        legend_handles = [mpatches.Patch(color=colors[i], label=quantile + str(i+1)) for i in range(color_count)]
+    else:
+        legend_handles = []
+
+    return volc_rain, erupt_dates, colors, quantile, legend_handles, start, end
 
 def extract_volcanoes(folder, volcanoName):
 
