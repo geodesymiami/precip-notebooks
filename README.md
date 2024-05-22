@@ -1,8 +1,18 @@
-Precipitation Modelling
+# Precipitation Modelling
 
-This package provides a suite of functions and notebooks for downloading, plotting, and analyzing IMERG precipitation data.
+This repository provides a suite of functions that can be used to analyze and plot precipitation data in a variety of ways. All of the tools for such plotting/analysis can be found in the "Generalized Functions" folder.
 
-Main features:
+This repository began as a collaboration space for a research group studying the effects of rainfall on volcanic activity in the Galapagos. Some of our analysis can be viewed in the "Notebooks" folder along with the original functions used in the "Notebook Functions" folder. Not all of the functions we used were easily adaptable to arbitrary lat/lon coordinates, but you can view them here in case they provide inspiration for new ways to view your data.
+
+## Directions:
+
+    1. Download the satellite IMERG data...(fill in details for how)
+
+    2. If analyzing volcanic activity, download volcano data (fill in details for how)
+
+    3. If analyzing El Ninos/La Ninas, download data (fill in details for how)
+
+    4. Create paths to the folders that contain these data (eg. '/Volumes/T7Shield/Volcano/GetPrecipitation-main/data')
 
 Plot_data notebooks
 
