@@ -403,7 +403,7 @@ def annual_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame
 
     return 
 
-def bar_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(), ninos=None, by_season=False, log_flag=True, centered=False, cumsum=True):
+def bar_plotter(rainfall, lat, lon, color_count=1, roll_count=1, eruptions=pd.DataFrame(), ninos=None, by_season=False, log_flag=True, centered=False, cumsum=True):
     """ Plots rolling rain temporally-- y-axis is rolling rain values, and x-axis is time.
 
     Args:
@@ -422,6 +422,12 @@ def bar_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(),
     """
 
     global elninos
+
+    if type(rainfall) == dict:
+        rainfall = pd.DataFrame(rainfall.items(), columns=['Date', 'Precipitation'])
+
+    # Convert array into single values
+    rainfall['Precipitation'] = rainfall['Precipitation'].apply(lambda x: x[0][0][0])
 
     volc_rain, erupt_dates, colors, quantile, legend_handles, start, end = data_preload(rainfall, roll_count, eruptions, color_count) 
         
@@ -482,7 +488,11 @@ def bar_plotter(rainfall, color_count=1, roll_count=1, eruptions=pd.DataFrame(),
     # Set plot properties
     plot.set_ylabel(str(roll_count) + " day precipitation (mm)")
     plot.set_xlabel("Year")
-    plot.set_title('tbd')
+    if eruptions.empty:
+        plot.set_title(f'Latitude: {lat}, Longitude: {lon}')
+    else:
+        volcano = eruptions['Volcano'].unique()
+        plot.set_title(f'{volcano[0]} - Latitude: {lat}, Longitude: {lon}')
     plot.set_yticks(ticks=[i for i in range(ticks)])
     plot.set_xticks(ticks=[start + (2*i) for i in range(((end - start) // 2) + 1)], labels=["'" + str(start + (2*i))[-2:] for i in range(((end - start) // 2) + 1)])
     plot2.set_ylabel("Cumulative precipitation (mm)", rotation=270, labelpad= 10)
